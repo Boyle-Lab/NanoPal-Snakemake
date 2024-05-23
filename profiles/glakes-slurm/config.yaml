@@ -1,0 +1,27 @@
+cluster:
+  mkdir -p slurm-logs/{rule} &&
+  sbatch
+    --account={resources.slurm_account}
+    --partition={resources.slurm_partition}
+    --nodes 1
+    --ntasks 1
+    --cpus-per-task={threads}
+    --mem={resources.mem_mb}
+    --time={resources.runtime}
+    --job-name="sm-{rule}-{wildcards}"
+    --output="slurm-logs/{rule}/{rule}-{wildcards}-%j.out"
+default-resources:
+  - slurm_account=apboyle0
+  - slurm_partition=standard
+  - runtime=5
+  - mem_mb=1024
+jobs: 60
+local-cores: 1
+restart-times: 0
+max-jobs-per-second: 1
+max-status-checks-per-second: 1
+latency-wait: 60
+keep-going: True
+rerun-incomplete: True
+printshellcmds: True
+scheduler: greedy

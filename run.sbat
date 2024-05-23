@@ -1,0 +1,23 @@
+#!/bin/bash
+
+#SBATCH --job-name=nanopal-snakemake-controller
+#SBATCH --mail-type=END
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=1024
+#SBATCH --time=4:00:00
+#SBATCH --account=apboyle0
+#SBATCH --partition=standard
+#SBATCH --output=snakemake-batch-run-%j.out
+#SBATCH --export=NONE
+
+my_job_header
+
+source ~/.bashrc
+
+module load snakemake
+module load singularity
+
+./run-glakes-slurm.sh samples/TODO.json \
+        _all
