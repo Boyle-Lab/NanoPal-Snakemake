@@ -1,19 +1,15 @@
 Bootstrap: docker
 From: staphb/samtools:1.20
 
-%files
-    ./ncbi-blast-2.15.0+-x64-linux.tar.gz /ncbi-blast-2.15.0+-x64-linux.tar.gz
-    ./palmer.zip /palmer.zip
-
 %post
     export PALMER_VER="a9bcc1b4d971c447931cb00ac1d69804421ec424"
     export BLAST_VER="2.15.0"
     apt-get update
     apt-get install -y --no-install-recommends wget ca-certificates libgomp1 unzip build-essential
-    # wget "https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/${BLAST_VER}/ncbi-blast-${BLAST_VER}+-x64-linux.tar.gz"
+    wget "https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/${BLAST_VER}/ncbi-blast-${BLAST_VER}+-x64-linux.tar.gz"
     tar -xzf "ncbi-blast-${BLAST_VER}+-x64-linux.tar.gz"
     rm "ncbi-blast-${BLAST_VER}+-x64-linux.tar.gz"
-    # wget "https://github.com/WeichenZhou/PALMER/archive/$PALMER_VER.zip" -O palmer.zip
+    wget "https://github.com/WeichenZhou/PALMER/archive/$PALMER_VER.zip" -O palmer.zip
     unzip palmer.zip
     mv PALMER-* palmer
     cd palmer
