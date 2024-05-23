@@ -11,5 +11,5 @@ snakemake \
   --use-singularity \
   --configfile "config/glakes.json" "$SAMPLES" \
   --profile "profiles/glakes" \
-  --snakefile "nanopal.smk"
+  --snakefile "nanopal.smk" \
   "$@"

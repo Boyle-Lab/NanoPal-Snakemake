@@ -35,7 +35,7 @@ def logged(shell_command):
 rule container:
     localrule: True
     output:
-        containers(name),
+        containers('{name}')
     params:
         source=lambda wc: config["containers"][wc.name],
     shell:
@@ -48,4 +48,4 @@ rule container:
 rule _containers:
     localrule: True
     input:
-        expand("containers/{name}.sif", name=config["containers"].keys())
+        expand(containers('{name}'), name=config["containers"].keys())
