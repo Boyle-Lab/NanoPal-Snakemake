@@ -19,5 +19,5 @@ source ~/.bashrc
 module load snakemake
 module load singularity
 
-./run-glakes-slurm.sh samples/TODO.json \
+./run-glakes.sh samples/TODO.json \
         _all
