@@ -65,9 +65,9 @@ rule input:
         logged(
             "cat {input}/*.fastq > {output.fastq}",
             r"""cat {output.fastq} | awk '
-                        NR % 4 == 1 {{ printf(">%s\n",substr($0,2)) }}
-                        NR % 4 == 2 {{ print }}
-                    ' > {output.fasta}""",
+                                NR % 4 == 1 {{ printf(">%s\n",substr($0,2)) }}
+                                NR % 4 == 2 {{ print }}
+                            ' > {output.fasta}""",
         )
 
 
@@ -97,6 +97,7 @@ rule index_reference:
             " {input.reference}"
         )
 
+
 rule alignment:
     log:
         scratch("_logs/alignment/{sample}.log"),
@@ -124,14 +125,6 @@ rule alignment:
             " > {output}"
         )
 
-        # logged(
-        #     "minimap2"
-        #     " -a"
-        #     " -x map-ont"
-        #     " -d {output}"
-        #     " -t {threads}"
-        #     " {input.reference}"
-        # )
 
 rule index_alignment:
     log:
@@ -149,7 +142,7 @@ rule index_alignment:
     threads: 2  # TODO
     resources:
         mem="8GB",
-        runtime="30m",
+        runtime="20m",
     shell:
         logged(
             r"""
@@ -179,7 +172,7 @@ rule palmer:
     threads: 2  # TODO
     resources:
         mem="4GB",
-        runtime="30m",
+        runtime="15m",
     shell:
         logged(
             "/palmer/PALMER"
