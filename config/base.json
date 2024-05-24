@@ -1,5 +1,7 @@
 {
     "containers": {
-        "minimap2": "docker://staphb/minimap2:2.28"
+        "minimap2": "docker://staphb/minimap2:2.28",
+        "palmer": "palmer.def",
+        "samtools": "docker://staphb/samtools:1.20"
     }
 }
