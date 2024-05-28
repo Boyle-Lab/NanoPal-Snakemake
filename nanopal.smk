@@ -20,18 +20,14 @@ wildcard_constraints:
 
 # Utilities -------------------------------------------------------------------
 
-
 def data(path):
     return os.path.join(DATA_PATH, path)
-
 
 def scratch(path):
     return os.path.join(SCRATCH_PATH, BATCH_ID, path)
 
-
 def containers(name):
     return os.path.join(CONTAINER_PATH, f"{name}.sif")
-
 
 def logged(*shell_commands):
     commands = "\n".join(shell_commands)
@@ -39,7 +35,6 @@ def logged(*shell_commands):
 
 
 # Rules -----------------------------------------------------------------------
-
 
 rule container:
     localrule: True
@@ -49,7 +44,6 @@ rule container:
         source=lambda wc: config["containers"][wc.name],
     shell:
         "singularity pull {output} {params.source}"
-
 
 rule input:
     localrule: True
@@ -65,11 +59,10 @@ rule input:
         logged(
             "cat {input}/*.fastq > {output.fastq}",
             r"""cat {output.fastq} | awk '
-                                        NR % 4 == 1 {{ printf(">%s\n",substr($0,2)) }}
-                                        NR % 4 == 2 {{ print }}
-                                    ' > {output.fasta}""",
+                    NR % 4 == 1 {{ printf(">%s\n",substr($0,2)) }}
+                    NR % 4 == 2 {{ print }}
+                ' > {output.fasta}""",
         )
-
 
 rule index_reference:
     log:
@@ -97,7 +90,6 @@ rule index_reference:
             " {input.reference}"
         )
 
-
 rule alignment:
     log:
         scratch("_logs/alignment/{sample}.log"),
@@ -114,7 +106,7 @@ rule alignment:
     threads: 16
     resources:
         mem="48GB",
-        runtime="30m",
+        runtime="1h",
     shell:
         logged(
             "minimap2"
@@ -124,7 +116,6 @@ rule alignment:
             " {input.index} {input.fastq}"
             " > {output}"
         )
-
 
 rule index_alignment:
     log:
@@ -151,7 +142,6 @@ rule index_alignment:
             """
         )
 
-
 rule palmer:
     log:
         scratch("_logs/palmer/{sample}_{chromosome}.log"),
@@ -176,25 +166,88 @@ rule palmer:
     shell:
         logged(
             "/palmer/PALMER"
-            "  --input {input.bam}"
-            "  --workdir {params.workdir}"
-            "  --output {wildcards.chromosome}"
-            "  --ref_fa {input.reference}"
-            "  --ref_ver {params.reference_version}"
-            "  --type {params.mobile_element}"
-            "  --chr {wildcards.chromosome}"
-            "  --mode raw"
+            "    --input {input.bam}"
+            "    --workdir {params.workdir}"
+            "    --output {wildcards.chromosome}"
+            "    --ref_fa {input.reference}"
+            "    --ref_ver {params.reference_version}"
+            "    --type {params.mobile_element}"
+            "    --chr {wildcards.chromosome}"
+            "    --mode raw"
+        )
+
+rule gather_matches:
+    # From Nanopal script:
+    #
+    # > pull out all reads having putative L1Hs signal reported by PALMER
+    localrule: True
+    log:
+        scratch("_logs/gather_matches/{sample}.log"),
+    benchmark:
+        scratch("_benchmarks/gather_matches/{sample}.tsv")
+    container:
+        containers("samtools")
+    input:
+        container=containers("samtools"),
+        palmer_sentinels=expand(
+            scratch("palmer/{{sample}}/{chromosome}/done"),
+            chromosome=config["chromosomes"],
+        ),
+        bam=scratch("alignment/{sample}/alignment.bam"),
+    output:
+        blast_matches=scratch("gather_matches/{sample}/blastn_refine.all.txt"),
+        cigar_matches=scratch("gather_matches/{sample}/mapped.info.txt"),
+    params:
+        palmer_dir=scratch("palmer/{sample}/"),
+    threads: 1
+    shell:
+        logged(
+            "find {params.palmer_dir} -name 'blastn_refine.txt'"
+            " | xargs cat"
+            " > {output.blast_matches}"
+            ,
+            "samtools view {input.bam}"
+            "   --min-MQ 10"
+            "   --exclude-flags=0x100" # exclude secondary alignments
+            "   --exclude-flags=0x200" # exclude not passed filters
+            "   --exclude-flags=0x400" # exclude PCR/optical duplicates
+            "   --exclude-flags=0x700" # exclude supplementary alignments
+            " | awk '{{print $1, $3, $4, $6}}'" # read id, chromosome, position, cigar
+            " > {output.cigar_matches}"
+        )
+
+rule parse_cigar:
+    localrule: True
+    log:
+        scratch("_logs/parse_cigar/{sample}.log"),
+    benchmark:
+        scratch("_benchmarks/parse_cigar/{sample}.tsv")
+    container:
+        containers("nanopal-binaries")
+    input:
+        container=containers("nanopal-binaries"),
+        cigar_matches=scratch("gather_matches/{sample}/mapped.info.txt"),
+    output:
+        cigar_results=scratch("parse_cigar/{sample}/cigar_results.all.txt"),
+        cigar_ref=scratch("parse_cigar/{sample}/cigar_ref.txt"),
+        mapped_info=scratch("parse_cigar/{sample}/mapped.info.final.txt"),
+    threads: 1
+    shell:
+        logged(
+            "awk '{{print $4}}' {input.cigar_matches} | cigar_parser > {output.cigar_results}",
+            "awk '{{print $4+$6+$10}}' {output.cigar_results} > {output.cigar_ref}",
+            "paste {input.cigar_matches} {output.cigar_ref}"
+            " | awk '{{print $1, $2, $3, $3+$5}}'"
+            " > {output.mapped_info}"
         )
 
 
 # PHONY -----------------------------------------------------------------------
 
-
 rule _containers:
     localrule: True
     input:
         expand(containers("{name}"), name=config["containers"].keys()),
-
 
 rule _input:
     localrule: True
@@ -202,12 +255,10 @@ rule _input:
         expand(scratch("input/{sample}/batch.fastq"), sample=config["samples"]),
         expand(scratch("input/{sample}/batch.fasta"), sample=config["samples"]),
 
-
 rule _alignment:
     localrule: True
     input:
         expand(scratch("alignment/{sample}/alignment.bam"), sample=config["samples"]),
-
 
 rule _palmer:
     localrule: True
@@ -218,9 +269,18 @@ rule _palmer:
             chromosome=config["chromosomes"],
         ),
 
+rule _cigar:
+    localrule: True
+    input:
+        expand(
+            scratch("palmer/{sample}/{chromosome}/done"),
+            sample=config["samples"],
+            chromosome=config["chromosomes"],
+        ),
 
 rule _all:
     localrule: True
     input:
         rules._palmer.input,
         rules._alignment.input,
+        expand(scratch("parse_cigar/{sample}/mapped.info.final.txt"), sample=config["samples"])

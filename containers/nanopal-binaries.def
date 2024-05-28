@@ -1,0 +1,15 @@
+Bootstrap: docker
+From: debian:bookworm-slim
+
+%files
+    ./nanopal-binaries/cigar_parser        /nanopal-binaries/cigar_parser
+    ./nanopal-binaries/cluster.1219.o      /nanopal-binaries/cluster.1219.o
+    ./nanopal-binaries/inter.0118.o        /nanopal-binaries/inter.0118.o
+    ./nanopal-binaries/merge.1206.o        /nanopal-binaries/merge.1206.o
+    ./nanopal-binaries/RM_collapse.0921.o  /nanopal-binaries/RM_collapse.0921.o
+
+%runscript
+    echo "Nanopal binaries are in /nanopal-binaries" && false
+
+%environment
+    export PATH="/nanopal-binaries:$PATH"
