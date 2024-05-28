@@ -65,9 +65,9 @@ rule input:
         logged(
             "cat {input}/*.fastq > {output.fastq}",
             r"""cat {output.fastq} | awk '
-                                NR % 4 == 1 {{ printf(">%s\n",substr($0,2)) }}
-                                NR % 4 == 2 {{ print }}
-                            ' > {output.fasta}""",
+                                        NR % 4 == 1 {{ printf(">%s\n",substr($0,2)) }}
+                                        NR % 4 == 2 {{ print }}
+                                    ' > {output.fasta}""",
         )
 
 
@@ -217,3 +217,10 @@ rule _palmer:
             sample=config["samples"],
             chromosome=config["chromosomes"],
         ),
+
+
+rule _all:
+    localrule: True
+    input:
+        rules._palmer.input,
+        rules._alignment.input,
