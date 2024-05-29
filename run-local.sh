@@ -7,6 +7,8 @@ set -euo pipefail
 SAMPLES="$1"
 shift
 
+export BLAST_USAGE_REPORT=0
+
 snakemake \
   --use-singularity \
   --configfile "config/local.json" "$SAMPLES" \

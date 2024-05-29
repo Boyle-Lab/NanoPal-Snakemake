@@ -241,6 +241,30 @@ rule parse_cigar:
             " > {output.mapped_info}"
         )
 
+rule find_on_target:
+    log:
+        scratch("_logs/find_on_target/{sample}.log"),
+    benchmark:
+        scratch("_benchmarks/find_on_target/{sample}.tsv")
+    container:
+        containers("blast")
+    input:
+        container=containers("blast"),
+        reads_fasta=scratch("input/{sample}/batch.fasta"),
+        mei_fasta="meis/L1.3", # TODO
+    output:
+        scratch("find_on_target/{sample}/on-target.txt")
+    threads: 4  # TODO
+    resources:
+        mem="16GB",
+        runtime="15m",
+    shell:
+        logged(
+            "./scripts/blast-reads.sh"
+            " {input.mei_fasta} {input.reads_fasta}"
+            " > {output}"
+        )
+
 
 # PHONY -----------------------------------------------------------------------
 
@@ -278,9 +302,18 @@ rule _cigar:
             chromosome=config["chromosomes"],
         ),
 
+rule _on_target:
+    localrule: True
+    input:
+        expand(
+            scratch("find_on_target/{sample}/on-target.txt"),
+            sample=config["samples"],
+        ),
+
 rule _all:
     localrule: True
     input:
         rules._palmer.input,
         rules._alignment.input,
-        expand(scratch("parse_cigar/{sample}/mapped.info.final.txt"), sample=config["samples"])
+        rules._cigar.input,
+        rules._on_target.input,
