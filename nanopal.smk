@@ -247,6 +247,7 @@ rule find_on_target:
         containers("blast")
     input:
         container=containers("blast"),
+        script="scripts/blast-reads.sh",
         reads_fasta=scratch("input/{sample}/batch.fasta"),
         mei_fasta="meis/L1.3", # TODO
     output:
@@ -257,9 +258,9 @@ rule find_on_target:
         runtime="15m",
     shell:
         logged(
-            "./scripts/blast-reads.sh"
-            " {input.mei_fasta} {input.reads_fasta}"
-            " > {output}"
+            "./{script}"
+            "  {input.mei_fasta} {input.reads_fasta}"
+            "  > {output}"
         )
 
 rule palmer_on_target:
@@ -271,6 +272,7 @@ rule palmer_on_target:
         containers("palmer")
     input:
         container=containers("palmer"),
+        script="scripts/palmer-on-target.sh",
         palmer_blast=scratch("gather_matches/{sample}/blastn_refine.all.txt"),
         palmer_map=scratch("parse_cigar/{sample}/mapped.info.final.txt"),
         nanopal_reads=scratch("find_on_target/{sample}/read.all.txt"),
@@ -282,11 +284,11 @@ rule palmer_on_target:
         runtime="15m",
     shell:
         logged(
-            "./scripts/palmer-on-target.sh"
-            " {input.palmer_blast}"
-            " {input.nanopal_reads}"
-            " {input.palmer_map}"
-            " > {output}"
+            "./{script}"
+            "  {input.palmer_blast}"
+            "  {input.nanopal_reads}"
+            "  {input.palmer_map}"
+            "  > {output}"
         )
 
 
