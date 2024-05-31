@@ -1,13 +1,13 @@
 Bootstrap: docker
-From: staphb/samtools:1.20
+From: staphb/samtools:1.10
 
 %files
-    ./ncbi-blast-2.15.0+-x64-linux.tar.gz /ncbi-blast-2.15.0+-x64-linux.tar.gz
+    ./ncbi-blast-2.12.0+-x64-linux.tar.gz /ncbi-blast-2.12.0+-x64-linux.tar.gz
     ./palmer.zip /palmer.zip
 
 %post
     export PALMER_VER="a9bcc1b4d971c447931cb00ac1d69804421ec424"
-    export BLAST_VER="2.15.0"
+    export BLAST_VER="2.12.0"
     apt-get update
     apt-get install -y --no-install-recommends wget ca-certificates libgomp1 unzip build-essential strace
     # wget "https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/${BLAST_VER}/ncbi-blast-${BLAST_VER}+-x64-linux.tar.gz"
@@ -28,7 +28,7 @@ From: staphb/samtools:1.20
 
 %environment
     export PALMER_VER="a9bcc1b4d971c447931cb00ac1d69804421ec424"
-    export BLAST_VER="2.15.0"
+    export BLAST_VER="2.12.0"
     export BLAST_USAGE_REPORT=0
     export LC_ALL=C
     export PATH="/palmer:/ncbi-blast-${BLAST_VER}+/bin:$PATH"

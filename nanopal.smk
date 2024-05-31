@@ -76,10 +76,10 @@ rule index_reference:
         reference=config["reference"],
     output:
         scratch("reference/index.mmi"),
-    threads: 16
+    threads: 2
     resources:
-        mem="24GB",
-        runtime="30m",
+        mem="12GB",
+        runtime="15m",
     shell:
         logged(
             "minimap2"
@@ -113,6 +113,9 @@ rule alignment:
             " -a"
             " -x map-ont"
             " -t {threads}"
+            " --secondary=no"
+            " --eqx"
+            " -Y"
             " {input.index} {input.fastq}"
             " > {output}"
         )
@@ -189,6 +192,7 @@ rule gather_matches:
         containers("samtools")
     input:
         container=containers("samtools"),
+        script="scripts/gather-palmer-results.sh",
         palmer_sentinels=expand(
             scratch("palmer/{{sample}}/{chromosome}/done"),
             chromosome=config["chromosomes"],
@@ -202,7 +206,7 @@ rule gather_matches:
     threads: 1
     shell:
         logged(
-            "./scripts/gather-palmer-results.sh "
+            "./{input.script} "
             "  {params.palmer_dir}"
             "  {input.bam}"
             "  {output.palmer_blast}"
@@ -247,7 +251,7 @@ rule find_on_target:
         mei_fasta="meis/L1.3", # TODO
     output:
         nanopal_reads=scratch("find_on_target/{sample}/read.all.txt")
-    threads: 2  # TODO
+    threads: 1
     resources:
         mem="16GB",
         runtime="15m",
@@ -271,8 +275,8 @@ rule palmer_on_target:
         palmer_map=scratch("parse_cigar/{sample}/mapped.info.final.txt"),
         nanopal_reads=scratch("find_on_target/{sample}/read.all.txt"),
     output:
-        scratch("palmer_on_target/{sample}/on-target.tsv")
-    threads: 2  # TODO
+        scratch("palmer_on_target/{sample}/read.all.palmer.final.txt")
+    threads: 1
     resources:
         mem="16GB",
         runtime="15m",
@@ -284,6 +288,7 @@ rule palmer_on_target:
             " {input.palmer_map}"
             " > {output}"
         )
+
 
 # PHONY -----------------------------------------------------------------------
 
@@ -302,6 +307,7 @@ rule _alignment:
     localrule: True
     input:
         expand(scratch("alignment/{sample}/alignment.bam"), sample=config["samples"]),
+        expand(scratch("alignment/{sample}/alignment.bam.bai"), sample=config["samples"]),
 
 rule _palmer:
     localrule: True
@@ -325,7 +331,11 @@ rule _on_target:
     localrule: True
     input:
         expand(
-            scratch("find_on_target/{sample}/on-target.txt"),
+            scratch("find_on_target/{sample}/read.all.txt"),
+            sample=config["samples"],
+        ),
+        expand(
+            scratch("palmer_on_target/{sample}/read.all.palmer.final.txt"),
             sample=config["samples"],
         ),
 

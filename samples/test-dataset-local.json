@@ -1,8 +1,8 @@
 {
-    "batch_id": "test-run-01",
+    "batch_id": "test-run-02",
     "mobile_element": "LINE",
     "reference_version": "GRCh38",
-    "reference":      "/home/slosh/scratch/nanopal-snakemake/ref/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna",
+    "reference":      "/home/slosh/scratch/nanopal-snakemake/ref/hg38.fa",
     "data_path":      "/home/slosh/scratch/nanopal-snakemake/data",
     "scratch_path":   "/home/slosh/scratch/nanopal-snakemake/scratch",
     "container_path": "/home/slosh/scratch/nanopal-snakemake/containers",
