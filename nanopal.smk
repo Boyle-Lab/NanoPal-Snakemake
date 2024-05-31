@@ -195,25 +195,18 @@ rule gather_matches:
         ),
         bam=scratch("alignment/{sample}/alignment.bam"),
     output:
-        blast_matches=scratch("gather_matches/{sample}/blastn_refine.all.txt"),
-        cigar_matches=scratch("gather_matches/{sample}/mapped.info.txt"),
+        palmer_blast=scratch("gather_matches/{sample}/blastn_refine.all.txt"),
+        palmer_cigar=scratch("gather_matches/{sample}/mapped.info.txt"),
     params:
         palmer_dir=scratch("palmer/{sample}/"),
     threads: 1
     shell:
         logged(
-            "find {params.palmer_dir} -name 'blastn_refine.txt'"
-            " | xargs cat"
-            " > {output.blast_matches}"
-            ,
-            "samtools view {input.bam}"
-            "   --min-MQ 10"
-            "   --exclude-flags=0x100" # exclude secondary alignments
-            "   --exclude-flags=0x200" # exclude not passed filters
-            "   --exclude-flags=0x400" # exclude PCR/optical duplicates
-            "   --exclude-flags=0x700" # exclude supplementary alignments
-            " | awk '{{print $1, $3, $4, $6}}'" # read id, chromosome, position, cigar
-            " > {output.cigar_matches}"
+            "./scripts/gather-palmer-results.sh "
+            "  {params.palmer_dir}"
+            "  {input.bam}"
+            "  {output.palmer_blast}"
+            "  {output.palmer_cigar}"
         )
 
 rule parse_cigar:
@@ -253,8 +246,8 @@ rule find_on_target:
         reads_fasta=scratch("input/{sample}/batch.fasta"),
         mei_fasta="meis/L1.3", # TODO
     output:
-        scratch("find_on_target/{sample}/on-target.txt")
-    threads: 4  # TODO
+        nanopal_reads=scratch("find_on_target/{sample}/read.all.txt")
+    threads: 2  # TODO
     resources:
         mem="16GB",
         runtime="15m",
@@ -265,6 +258,32 @@ rule find_on_target:
             " > {output}"
         )
 
+rule palmer_on_target:
+    log:
+        scratch("_logs/palmer_on_target/{sample}.log"),
+    benchmark:
+        scratch("_benchmarks/palmer_on_target/{sample}.tsv")
+    container:
+        containers("palmer")
+    input:
+        container=containers("palmer"),
+        palmer_blast=scratch("gather_matches/{sample}/blastn_refine.all.txt"),
+        palmer_map=scratch("parse_cigar/{sample}/mapped.info.final.txt"),
+        nanopal_reads=scratch("find_on_target/{sample}/read.all.txt"),
+    output:
+        scratch("palmer_on_target/{sample}/on-target.tsv")
+    threads: 2  # TODO
+    resources:
+        mem="16GB",
+        runtime="15m",
+    shell:
+        logged(
+            "./scripts/palmer-on-target.sh"
+            " {input.palmer_blast}"
+            " {input.nanopal_reads}"
+            " {input.palmer_map}"
+            " > {output}"
+        )
 
 # PHONY -----------------------------------------------------------------------
 

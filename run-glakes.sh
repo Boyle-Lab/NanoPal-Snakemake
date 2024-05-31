@@ -15,3 +15,5 @@ snakemake \
   --profile "profiles/glakes" \
   --snakefile "nanopal.smk" \
   "$@"
+
+
