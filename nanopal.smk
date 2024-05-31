@@ -291,6 +291,27 @@ rule palmer_on_target:
             "  > {output}"
         )
 
+rule intersect:
+    log:
+        scratch("_logs/intersect/{sample}.log"),
+    benchmark:
+        scratch("_benchmarks/intersect/{sample}.tsv")
+    container:
+        containers("nanopal-binaries")
+    input:
+        container=containers("nanopal-binaries"),
+        palmer_reads=scratch("palmer_on_target/{sample}/read.all.palmer.final.txt"),
+    params:
+        out_dir=scratch("intersect/{sample}/"),
+    threads: 1 # TODO
+    shell:
+        logged(
+            "./{script}"
+            "  {input.palmer_reads}"
+            "  {params.out_dir}"
+        )
+
+
 
 # PHONY -----------------------------------------------------------------------
 

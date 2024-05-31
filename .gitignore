@@ -1,5 +1,4 @@
 testresults
-containers/nanopal-binaries
 containers/*.sif
 tmp/
-nanopal-binaries/bin
+containers/nanopal-binaries/bin

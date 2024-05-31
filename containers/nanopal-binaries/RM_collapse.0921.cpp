@@ -37,7 +37,7 @@ file5.open("output_rm_cluster.txt");
     string rm[line1][5];
     string cluster[line1][2];
     int flag[line1];
-    int rm_flag[line1][6];
+    /* int rm_flag[line1][6]; */
     for(int i=0;i!=line1;i++){
         file1>>rm[i][0];
         file1>>rm[i][1];
