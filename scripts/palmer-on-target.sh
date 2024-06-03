@@ -36,7 +36,7 @@ awk '
         if (start_pos == "null") { start_pos = 0 }
         if (end_pos == "null") { end_pos = 0 }
 
-        print read_name, read_length, n_plus5, n_minus5, n_plus3, n_minus3, p_plus5, p_minus5, p_plus3, p_minus3, chr, start_pos, end_pos
+        print read_name, read_length, n_plus5, n_minus5, n_plus3, n_minus3, p_plus5, p_minus5, p_plus3, p_minus3, chr " " start_pos " " end_pos
     }
 
     {

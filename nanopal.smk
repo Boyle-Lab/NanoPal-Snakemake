@@ -258,7 +258,7 @@ rule find_on_target:
         runtime="15m",
     shell:
         logged(
-            "./{script}"
+            "./{input.script}"
             "  {input.mei_fasta} {input.reads_fasta}"
             "  > {output}"
         )
@@ -284,7 +284,7 @@ rule palmer_on_target:
         runtime="15m",
     shell:
         logged(
-            "./{script}"
+            "./{input.script}"
             "  {input.palmer_blast}"
             "  {input.nanopal_reads}"
             "  {input.palmer_map}"
@@ -299,16 +299,23 @@ rule intersect:
     container:
         containers("nanopal-binaries")
     input:
+        script="scripts/intersect.sh",
         container=containers("nanopal-binaries"),
         palmer_reads=scratch("palmer_on_target/{sample}/read.all.palmer.final.txt"),
-    params:
-        out_dir=scratch("intersect/{sample}/"),
+        ref_mei="meis/hg38.RM.L1.ref",
+        orig_mei="meis/PALMER.NA12878.L1.txt",
+    output:
+        out_dir=directory(scratch("intersect/{sample}/")),
+        out_summary=scratch("intersect/{sample}/summary.final.txt"),
     threads: 1 # TODO
     shell:
         logged(
-            "./{script}"
+            "./{input.script}"
             "  {input.palmer_reads}"
-            "  {params.out_dir}"
+            "  {input.ref_mei}"
+            "  {input.orig_mei}"
+            "  {output.out_dir}"
+            "  {output.out_summary}"
         )
 
 
@@ -362,6 +369,14 @@ rule _on_target:
             sample=config["samples"],
         ),
 
+rule _intersect:
+    localrule: True
+    input:
+        expand(
+            scratch("intersect/{sample}/summary.final.txt"),
+            sample=config["samples"],
+        ),
+
 rule _all:
     localrule: True
     input:
@@ -369,3 +384,4 @@ rule _all:
         rules._alignment.input,
         rules._cigar.input,
         rules._on_target.input,
+        rules._intersect.input,

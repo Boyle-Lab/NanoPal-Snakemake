@@ -2,11 +2,11 @@ Bootstrap: docker
 From: debian:bookworm-slim
 
 %files
-    ./nanopal-binaries/bin/cigar_parser    /nanopal-binaries/cigar_parser
-    ./nanopal-binaries/bin/inter           /nanopal-binaries/inter
-    ./nanopal-binaries/cluster.1219.o      /nanopal-binaries/cluster.1219.o
-    ./nanopal-binaries/merge.1206.o        /nanopal-binaries/merge.1206.o
-    ./nanopal-binaries/RM_collapse.0921.o  /nanopal-binaries/RM_collapse.0921.o
+    ./nanopal-binaries/bin/cigar_parser /nanopal-binaries/cigar_parser
+    ./nanopal-binaries/bin/inter        /nanopal-binaries/inter
+    ./nanopal-binaries/cluster.1219.o   /nanopal-binaries/cluster.1219.o
+    ./nanopal-binaries/merge.1206.o     /nanopal-binaries/merge.1206.o
+    ./nanopal-binaries/bin/RM_collapse  /nanopal-binaries/RM_collapse
 
 %runscript
     echo "Nanopal binaries are in /nanopal-binaries" && false

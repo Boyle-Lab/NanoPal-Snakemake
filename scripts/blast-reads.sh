@@ -5,7 +5,7 @@ set -euo pipefail
 mei_fasta="$1"
 reads_fasta="$2"
 
-function read_lengths() {
+function read_lengths {
     # Compute the length of each read in the FASTA, output as:
     #
     #     id length
@@ -29,7 +29,7 @@ function read_lengths() {
         | sort -k 1
 }
 
-function blast_query() {
+function blast_query {
     # BLAST the query (i.e. the reads) against the consensus sequence.  Output
     # as (qacc = query accession = read id):
     #
@@ -45,7 +45,7 @@ function blast_query() {
         | sort -k 1
 }
 
-function full_input() {
+function full_input {
     # Join the BLAST results with the read lengths.  Output as:
     #
     #     id length qacc evalue qstart qend sstart send
