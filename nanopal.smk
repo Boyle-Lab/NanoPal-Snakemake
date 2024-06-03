@@ -318,6 +318,33 @@ rule intersect:
             "  {output.out_summary}"
         )
 
+rule intersect_again:
+    log:
+        scratch("_logs/intersect_again/{sample}.log"),
+    benchmark:
+        scratch("_benchmarks/intersect_again/{sample}.tsv")
+    container:
+        containers("nanopal-binaries")
+    input:
+        script="scripts/intersect-again.sh",
+        container=containers("nanopal-binaries"),
+        bam=scratch("alignment/{sample}/alignment.bam"),
+        ref_mei="meis/hg38.RM.L1.ref",
+        in_summary=scratch("intersect/{sample}/summary.final.txt"),
+    output:
+        out_dir=directory(scratch("intersect_again/{sample}/")),
+        out_summary=scratch("intersect_again/{sample}/summary.final.2.txt"),
+    threads: 1 # TODO
+    shell:
+        logged(
+            "./{input.script}"
+            "  {input.bam}"
+            "  {input.ref_mei}"
+            "  {input.in_summary}"
+            "  {output.out_dir}"
+            "  {output.out_summary}"
+        )
+
 
 
 # PHONY -----------------------------------------------------------------------
@@ -374,6 +401,10 @@ rule _intersect:
     input:
         expand(
             scratch("intersect/{sample}/summary.final.txt"),
+            sample=config["samples"],
+        ),
+        expand(
+            scratch("intersect_again/{sample}/summary.final.2.txt"),
             sample=config["samples"],
         ),
 
