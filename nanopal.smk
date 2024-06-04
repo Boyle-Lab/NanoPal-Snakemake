@@ -330,19 +330,23 @@ rule intersect_again:
         container=containers("nanopal-binaries"),
         bam=scratch("alignment/{sample}/alignment.bam"),
         ref_mei="meis/hg38.RM.L1.ref",
+        pp_mei="meis/union/L1.inter.fi",
         in_summary=scratch("intersect/{sample}/summary.final.txt"),
     output:
         out_dir=directory(scratch("intersect_again/{sample}/")),
         out_summary=scratch("intersect_again/{sample}/summary.final.2.txt"),
+        out_result_log=scratch("intersect_again/{sample}/result-log.txt"),
     threads: 1 # TODO
     shell:
         logged(
             "./{input.script}"
             "  {input.bam}"
             "  {input.ref_mei}"
+            "  {input.pp_mei}"
             "  {input.in_summary}"
             "  {output.out_dir}"
             "  {output.out_summary}"
+            "  {output.out_result_log}"
         )
 
 
