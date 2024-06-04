@@ -145,6 +145,30 @@ rule index_alignment:
             """
         )
 
+rule find_valid_reads:
+    log:
+        scratch("_logs/find_valid_reads/{sample}.log"),
+    benchmark:
+        scratch("_benchmarks/find_valid_reads/{sample}.tsv")
+    container:
+        containers("samtools")
+    input:
+        container=containers("samtools"),
+        bam=scratch("alignment/{sample}/alignment.bam"),
+    output:
+        valid_read_ids=scratch("find_valid_reads/{sample}/RC.all.list"),
+    threads: 1
+    resources:
+        mem="8GB",
+        runtime="10m",
+    shell:
+        logged(
+            "samtools view {input.bam}"
+            "    -q 10 -F 0x100 -F 0x200 -F 0x800 -F 0x400 -f 0x10"
+            " | awk '{{print $1}}'"
+            " > {output.valid_read_ids}"
+        )
+
 rule palmer:
     log:
         scratch("_logs/palmer/{sample}_{chromosome}.log"),
@@ -332,6 +356,7 @@ rule intersect_again:
         ref_mei="meis/hg38.RM.L1.ref",
         pp_mei="meis/union/L1.inter.fi",
         in_summary=scratch("intersect/{sample}/summary.final.txt"),
+        valid_read_ids=scratch("find_valid_reads/{sample}/RC.all.list"),
     output:
         out_dir=directory(scratch("intersect_again/{sample}/")),
         out_summary=scratch("intersect_again/{sample}/summary.final.2.txt"),
@@ -344,6 +369,7 @@ rule intersect_again:
             "  {input.ref_mei}"
             "  {input.pp_mei}"
             "  {input.in_summary}"
+            "  {input.valid_read_ids}"
             "  {output.out_dir}"
             "  {output.out_summary}"
             "  {output.out_result_log}"
