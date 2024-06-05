@@ -28,7 +28,6 @@ mv output_rm_cluster.txt read.5.Q.ref.txt
 cp ${orig_mei}  S.txt
 inter
 awk '{if($8=="") print $1,$2,$3,$4,"NON"; else print $1,$2,$3,$4,$8}' inter.txt > read.5.Q.P.txt
-
 cp read.3.Q.txt Q.txt
 
 #######MEI

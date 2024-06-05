@@ -38,59 +38,75 @@ join -1 1 -2 1 \
      <(sort -k1 "$valid_read_ids" | sed -e 's/$/ 1/') \
      > "$out_summary"
 
-# Diff is clean above here ----------------------------------------------------
-touch "$out_result_log"
-exit 0
-
 # TODO Refactor the rest of this into separate chunks.
 
+# Checking for signal on single end only
 SIGNAL1=$(awk '(($3+$4)!=0 && ($5+$6)==0) || (($3+$4)==0 && ($5+$6)!=0)' "$out_summary" | wc -l)
+
+# Checking for signal on both ends
 SIGNAL2=$(awk '($3+$4)!=0 && ($5+$6)!=0' "$out_summary" | wc -l)
+
+# Checking for no signal
 FAIL=$(awk '($3+$4+$5+$6)==0' "$out_summary" | wc -l)
 
+# non-reference events
 cat "$out_summary" | awk '$11=="NON"' > summary.final.unmap.read.txt
 
+# reference event, nanopal got no signal, palmer did get signal
 cat "$out_summary" | awk '$11!="NON"' | awk '($3+$4+$5+$6)==0&&($7+$8+$9+$10)!=0' > summary.final.odd.read.txt
 
+# reference event, nanopal got no signal, palmer got no signal
 cat "$out_summary" | awk '$11!="NON"' | awk '($3+$4+$5+$6+$7+$8+$9+$10)==0' > summary.final.no.L1.read.txt
 
+# reference event, nanopal got signal
 cat "$out_summary" | awk '$11!="NON"' | awk '($3+$4+$5+$6)!=0' > summary.final.all.L1.read.txt
 
-cat "$out_summary" | awk '$11!="NON"' | awk '($3+$4+$5+$6)!=0&&($7+$8+$9+$10)!=0' > summary.final.PALMER.L1.read.txt
+# Both palmer and nanopal have signal
 cat "$out_summary" | awk '$11!="NON"' | awk '($3+$4+$5+$6)!=0&&($7+$8+$9+$10)!=0' > summary.final.PALMER.read.txt
 
+# only nanopal has signal
 cat "$out_summary" | awk '$11!="NON"' | awk '($3+$4+$5+$6)!=0&&($7+$8+$9+$10)==0' > summary.final.ref.L1.read.txt
 
-cat summary.final.PALMER.read.txt | awk '{
-    if(($7+$8)>0&&($9+$10)==0&&$7>0) {print $11,$12,$14,$18,"5","+"}
-    else if (($7+$8) > 0  && ($9+$10) == 0 &&$8>0) {print $11,$12,$14,$18,"5","-"}
-    else if (($7+$8) == 0 && ($9+$10) > 0 && $9>0) {print $11,$13,$15,$18,"3","+"}
-    else if (($7+$8) == 0 && ($9+$10) > 0 && $10>0) {print $11,$13,$15,$18,"3","-"}
-    else if (($7+$8) > 0  && ($9+$10) > 0 && $7>0&&$9>0) {print $11,$12,$14,$18,"5","+""\n"$11,$13,$15,$18,"3","+"}
-    else if (($7+$8) > 0  && ($9+$10) > 0 && $7>0&&$10>0) {print $11,$12,$14,$18,"5","+""\n"$11,$13,$15,$18,"3","-"}
-    else if (($7+$8) > 0  && ($9+$10) > 0 && $8>0&&$9>0) {print $11,$12,$14,$18,"5","-""\n"$11,$13,$15,$18,"3","+"}
-    else if (($7+$8) > 0  && ($9+$10) > 0 && $8>0&&$10>0) {print $11,$12,$14,$18,"5","-""\n"$11,$13,$15,$18,"3","-"}
-}' | sort -k 2 -n | sort -k 1 > capture.loci.palmer
 
-cat summary.final.PALMER.L1.read.txt | awk '{
-    if(($7+$8)>0&&($9+$10)==0&&$18==0&&($5+$6)>0) {print $11,$13,$17,$18,"3"}
+# Getting chr, start, clusteringinfo, validreadbit, 5/3, ± for reads where palmer and nanopal both have signal
+cat summary.final.PALMER.read.txt | awk '{
+                                                        # chr, start, clusteringinfo, valid_mapped_read_bit, 5 ±
+    if      (($7+$8)  > 0 && ($9+$10) == 0 && $7>0) {print $11,$12,$14,$18,"5","+"}
+    else if (($7+$8)  > 0 && ($9+$10) == 0 && $8>0) {print $11,$12,$14,$18,"5","-"}
+                                                        # chr, end, clusteringinfo, valid_mapped_read_bit, 3 ±
+    else if (($7+$8) == 0 && ($9+$10)  > 0 && $9>0) {print $11,$13,$15,$18,"3","+"}
+    else if (($7+$8) == 0 && ($9+$10)  > 0 && $10>0) {print $11,$13,$15,$18,"3","-"}
+
+    else if (($7+$8)  > 0 && ($9+$10)  > 0 && $7>0&&$9>0) {print  $11,$12,$14,$18,"5","+""\n"$11,$13,$15,$18,"3","+"}
+    else if (($7+$8)  > 0 && ($9+$10)  > 0 && $7>0&&$10>0) {print $11,$12,$14,$18,"5","+""\n"$11,$13,$15,$18,"3","-"}
+    else if (($7+$8)  > 0 && ($9+$10)  > 0 && $8>0&&$9>0) {print  $11,$12,$14,$18,"5","-""\n"$11,$13,$15,$18,"3","+"}
+    else if (($7+$8)  > 0 && ($9+$10)  > 0 && $8>0&&$10>0) {print $11,$12,$14,$18,"5","-""\n"$11,$13,$15,$18,"3","-"}
+}' | sort -k 2 -n | sort -k 1 > capture.loci.palmer
+# Note: this appears to be trying to sort by two keys, but since it doesn't pass
+# --stable sort will do a last-resort comparison, so this is actually only
+# sorted by field 1 to end of line (but NOT numeric for field 2).  The proper
+# way to do what I think this is tryign to do is: sort -k 1,1 -k 2,2n
+
+# Getting chr, start, clusteringinfo, validreadbit, 5/3, for a mix of palmer/nanopal signals
+cat summary.final.PALMER.read.txt | awk '{
+    if      (($7+$8)>0&&($9+$10)==0&&$18==0&&($5+$6)>0) {print $11,$13,$17,$18,"3"}
     else if (($7+$8)>0&&($9+$10)==0&&$18==1&&($3+$4)>0) {print $11,$13,$17,$18,"3"}
     else if (($7+$8)==0&&($9+$10)>0&&$18==0&&($3+$4)>0) {print $11,$12,$16,$18,"5"}
     else if (($7+$8)==0&&($9+$10)>0&&$18==1&&($5+$6)>0) {print $11,$12,$16,$18,"5"}
 }' | sort -k 2 -n | sort -k 1 > capture.loci.ref.add
 
+# Getting ... for when only nanopal has signal
 cat summary.final.ref.L1.read.txt | awk '{
-    if(($3+$4)>0&&($5+$6)==0&&$18==0) {print $11,$12,$16,$18,"5"}
-    else if(($3+$4)>0&&($5+$6)==0&&$18==1) {print $11,$13,$17,$18,"3"}
-    else if (($3+$4)==0&&($5+$6)>0&&$18==0) {print $11,$13,$17,$18,"3"}
-    else if (($3+$4)==0&&($5+$6)>0&&$18==1) {print $11,$12,$16,$18,"5"}
-    else if(($3+$4)>0&&($5+$6)>0) {print $11,$12,$16,$18,"5""\n"$11,$13,$17,$18,"3"}
+    if      (($3+$4)  > 0 && ($5+$6) == 0 && $18 == 0) {print $11,$12,$16,$18,"5"}
+    else if (($3+$4)  > 0 && ($5+$6) == 0 && $18 == 1) {print $11,$13,$17,$18,"3"}
+    else if (($3+$4) == 0 && ($5+$6)  > 0 && $18 == 0) {print $11,$13,$17,$18,"3"}
+    else if (($3+$4) == 0 && ($5+$6)  > 0 && $18 == 1) {print $11,$12,$16,$18,"5"}
+    else if (($3+$4)  > 0 && ($5+$6)  > 0) {print $11,$12,$16,$18,"5""\n"$11,$13,$17,$18,"3"}
 }' | sort -k 2 -n | sort -k 1 > capture.loci.ref
 
 
 cat capture.loci.palmer | grep cluster    | awk '{print $1,$2,$2+1,$3,$4,$5,"Nanopore"}'    > capture.loci.palmer.process
 cat capture.loci.palmer | grep -v cluster | awk '{print $1,$2,$2+1,$3,$4,$5,$6,"Nanopore"}' > capture.loci.potential.process
-
 
 cat capture.loci.ref capture.loci.ref.add > capture.loci.ref.all
 cat capture.loci.ref.all | grep L1HS |                                 awk '{print $1,$2,$2+1,$3,$4,$5,"Nanopore"}' > capture.loci.r.l1hs
