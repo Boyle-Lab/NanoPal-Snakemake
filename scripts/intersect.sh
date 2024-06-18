@@ -50,11 +50,21 @@ sort -k 4 read.3.Q.ref.txt > 3.ref.inter.txt
 paste 5.P.inter.txt 3.P.inter.txt 5.ref.inter.txt 3.ref.inter.txt | awk '{print $4,$5,$10,$15,$20}' > read.RM.txt
 
 rm -f read.RM.2.txt
-while read -r a b c d e f g h i j k l m
-do
-awk 'BEGIN{score=0}{if($1=="'$a'") {score+=1;print $2,$3,$4,$5}} END{if(score==0) print "NA","NA","NA","NA"}' read.RM.txt >> read.RM.2.txt
-wait
+while read -r a b c d e f g h i j k l m; do
+    awk '
+        BEGIN { score = 0 }
+        {
+            if($1=="'$a'") {
+                score += 1
+                print $2,$3,$4,$5
+            }
+        }
+        END {
+            if (score == 0) {
+                print "NA","NA","NA","NA"
+            }
+        }' read.RM.txt >> read.RM.2.txt
 done < "$palmer_reads"
 
-##Summary table of L1Hs for each read
+# Summary table of MEIs for each read
 paste "$palmer_reads" read.RM.2.txt > summary.final.txt

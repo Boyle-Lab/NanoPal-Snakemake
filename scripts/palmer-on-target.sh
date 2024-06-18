@@ -6,6 +6,7 @@ set -eu
 palmer_blast="$1" # blastn_refine.all.txt
 nanopal_reads="$2" # read.all.txt
 palmer_map="$3" # mapped.info.final.txt
+mei_cut_site="$4"
 
 function full_input() {
     # Join the PALMER BLAST results with the read lengths.  Output as:
@@ -28,7 +29,10 @@ function full_input() {
            <(cat "$palmer_map" | sort -k 1)
 }
 
-awk '
+awk \
+    -v cut_lo=100 \
+    -v cut_hi="$mei_cut_site" \
+    '
     BEGIN { OFS = "\t" }
 
     function print_result() {
@@ -81,8 +85,8 @@ awk '
             # compared to the other script here, so we do not need to do the
             # extra swap the other script did.
 
-            if(qend > 5900) {
-                if (sstart < 100 || send < 100) {
+            if(qend > cut_hi) {
+                if (sstart < cut_lo || send < cut_lo) {
                     if (sstart < send) {
                         p_plus5 = 1
                     } else {

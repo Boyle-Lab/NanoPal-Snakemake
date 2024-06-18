@@ -12,6 +12,7 @@ BATCH_ID = config["batch_id"]
 DATA_PATH = config["data_path"]
 SCRATCH_PATH = config["scratch_path"]
 CONTAINER_PATH = config["container_path"]
+MOBILE_ELEMENTS = config["mobile_elements"]
 
 
 wildcard_constraints:
@@ -169,11 +170,17 @@ rule find_valid_reads:
             " > {output.valid_read_ids}"
         )
 
+def palmer_mei_param(wc):
+    return {
+        'LINE': 'LINE',
+        'AluYa': 'ALU',
+    }[wc.mei]
+
 rule palmer:
     log:
-        scratch("_logs/palmer/{sample}_{chromosome}.log"),
+        scratch("_logs/palmer/{sample}_{mei}_{chromosome}.log"),
     benchmark:
-        scratch("_benchmarks/palmer/{sample}_{chromosome}.tsv")
+        scratch("_benchmarks/palmer/{sample}_{mei}_{chromosome}.tsv")
     container:
         containers("palmer")
     input:
@@ -181,11 +188,11 @@ rule palmer:
         reference=config["reference"],
         bam=scratch("alignment/{sample}/alignment.bam"),
     output:
-        sentinel=touch(scratch("palmer/{sample}/{chromosome}/done")),
+        sentinel=touch(scratch("palmer/{sample}/{mei}/{chromosome}/done")),
     params:
-        workdir=scratch("palmer/{sample}/{chromosome}/"),
+        workdir=scratch("palmer/{sample}/{mei}/{chromosome}/"),
         reference_version=config["reference_version"],
-        mobile_element=config["mobile_element"],
+        palmer_mei=palmer_mei_param,
     threads: 2  # TODO
     resources:
         mem="4GB",
@@ -198,7 +205,7 @@ rule palmer:
             "    --output {wildcards.chromosome}"
             "    --ref_fa {input.reference}"
             "    --ref_ver {params.reference_version}"
-            "    --type {params.mobile_element}"
+            "    --type {wildcards.mei}"
             "    --chr {wildcards.chromosome}"
             "    --mode raw"
         )
@@ -209,24 +216,24 @@ rule gather_matches:
     # > pull out all reads having putative L1Hs signal reported by PALMER
     localrule: True
     log:
-        scratch("_logs/gather_matches/{sample}.log"),
+        scratch("_logs/gather_matches/{sample}_{mei}.log"),
     benchmark:
-        scratch("_benchmarks/gather_matches/{sample}.tsv")
+        scratch("_benchmarks/gather_matches/{sample}_{mei}.tsv")
     container:
         containers("samtools")
     input:
         container=containers("samtools"),
         script="scripts/gather-palmer-results.sh",
         palmer_sentinels=expand(
-            scratch("palmer/{{sample}}/{chromosome}/done"),
+            scratch("palmer/{{sample}}/{{mei}}/{chromosome}/done"),
             chromosome=config["chromosomes"],
         ),
         bam=scratch("alignment/{sample}/alignment.bam"),
     output:
-        palmer_blast=scratch("gather_matches/{sample}/blastn_refine.all.txt"),
-        palmer_cigar=scratch("gather_matches/{sample}/mapped.info.txt"),
+        palmer_blast=scratch("gather_matches/{sample}/{mei}/blastn_refine.all.txt"),
+        palmer_cigar=scratch("gather_matches/{sample}/{mei}/mapped.info.txt"),
     params:
-        palmer_dir=scratch("palmer/{sample}/"),
+        palmer_dir=scratch("palmer/{sample}/{mei}/"),
     threads: 1
     shell:
         logged(
@@ -240,18 +247,18 @@ rule gather_matches:
 rule parse_cigar:
     localrule: True
     log:
-        scratch("_logs/parse_cigar/{sample}.log"),
+        scratch("_logs/parse_cigar/{sample}_{mei}.log"),
     benchmark:
-        scratch("_benchmarks/parse_cigar/{sample}.tsv")
+        scratch("_benchmarks/parse_cigar/{sample}_{mei}.tsv")
     container:
         containers("nanopal-binaries")
     input:
         container=containers("nanopal-binaries"),
-        cigar_matches=scratch("gather_matches/{sample}/mapped.info.txt"),
+        cigar_matches=scratch("gather_matches/{sample}/{mei}/mapped.info.txt"),
     output:
-        cigar_results=scratch("parse_cigar/{sample}/cigar_results.all.txt"),
-        cigar_ref=scratch("parse_cigar/{sample}/cigar_ref.txt"),
-        mapped_info=scratch("parse_cigar/{sample}/mapped.info.final.txt"),
+        cigar_results=scratch("parse_cigar/{sample}/{mei}/cigar_results.all.txt"),
+        cigar_ref=scratch("parse_cigar/{sample}/{mei}/cigar_ref.txt"),
+        mapped_info=scratch("parse_cigar/{sample}/{mei}/mapped.info.final.txt"),
     threads: 1
     shell:
         logged(
@@ -262,20 +269,35 @@ rule parse_cigar:
             " > {output.mapped_info}"
         )
 
+def mei_fasta(wc):
+    return {
+        'LINE': "meis/L1.3",
+        'AluYa': "meis/AluYa5",
+        'AluYb': "meis/AluYb8",
+    }[wc.mei]
+
+def mei_cut_site(wc):
+    return {
+        'LINE': 5900,
+        'AluYa': 225,
+    }[wc.mei]
+
 rule find_on_target:
     log:
-        scratch("_logs/find_on_target/{sample}.log"),
+        scratch("_logs/find_on_target/{sample}_{mei}.log"),
     benchmark:
-        scratch("_benchmarks/find_on_target/{sample}.tsv")
+        scratch("_benchmarks/find_on_target/{sample}_{mei}.tsv")
     container:
         containers("blast")
     input:
         container=containers("blast"),
         script="scripts/blast-reads.sh",
         reads_fasta=scratch("input/{sample}/batch.fasta"),
-        mei_fasta="meis/L1.3", # TODO
+        mei_fasta=mei_fasta,
     output:
-        nanopal_reads=scratch("find_on_target/{sample}/read.all.txt")
+        nanopal_reads=scratch("find_on_target/{sample}/{mei}/read.all.txt")
+    params:
+        mei_cut_site=mei_cut_site,
     threads: 1
     resources:
         mem="16GB",
@@ -283,25 +305,29 @@ rule find_on_target:
     shell:
         logged(
             "./{input.script}"
-            "  {input.mei_fasta} {input.reads_fasta}"
+            "  {input.mei_fasta}"
+            "  {input.reads_fasta}"
+            "  {params.mei_cut_site}"
             "  > {output}"
         )
 
 rule palmer_on_target:
     log:
-        scratch("_logs/palmer_on_target/{sample}.log"),
+        scratch("_logs/palmer_on_target/{sample}_{mei}.log"),
     benchmark:
-        scratch("_benchmarks/palmer_on_target/{sample}.tsv")
+        scratch("_benchmarks/palmer_on_target/{sample}_{mei}.tsv")
     container:
         containers("palmer")
     input:
         container=containers("palmer"),
         script="scripts/palmer-on-target.sh",
-        palmer_blast=scratch("gather_matches/{sample}/blastn_refine.all.txt"),
-        palmer_map=scratch("parse_cigar/{sample}/mapped.info.final.txt"),
-        nanopal_reads=scratch("find_on_target/{sample}/read.all.txt"),
+        palmer_blast=scratch("gather_matches/{sample}/{mei}/blastn_refine.all.txt"),
+        palmer_map=scratch("parse_cigar/{sample}/{mei}/mapped.info.final.txt"),
+        nanopal_reads=scratch("find_on_target/{sample}/{mei}/read.all.txt"),
     output:
-        scratch("palmer_on_target/{sample}/read.all.palmer.final.txt")
+        scratch("palmer_on_target/{sample}/{mei}/read.all.palmer.final.txt")
+    params:
+        mei_cut_site=mei_cut_site,
     threads: 1
     resources:
         mem="16GB",
@@ -312,25 +338,38 @@ rule palmer_on_target:
             "  {input.palmer_blast}"
             "  {input.nanopal_reads}"
             "  {input.palmer_map}"
+            "  {params.mei_cut_site}"
             "  > {output}"
         )
 
+def ref_mei(wc):
+    return {
+        "LINE":  "meis/hg38.RM.L1.ref",
+        "AluYa": "meis/hg38.RM.ALU.ref",
+    }[wc.mei]
+
+def orig_mei(wc):
+    return {
+        "LINE":  "meis/PALMER.NA12878.L1.txt",
+        "AluYa": "meis/PALMER.NA12878.ALU.txt",
+    }[wc.mei]
+
 rule intersect:
     log:
-        scratch("_logs/intersect/{sample}.log"),
+        scratch("_logs/intersect/{sample}_{mei}.log"),
     benchmark:
-        scratch("_benchmarks/intersect/{sample}.tsv")
+        scratch("_benchmarks/intersect/{sample}_{mei}.tsv")
     container:
         containers("nanopal-binaries")
     input:
         script="scripts/intersect.sh",
         container=containers("nanopal-binaries"),
-        palmer_reads=scratch("palmer_on_target/{sample}/read.all.palmer.final.txt"),
-        ref_mei="meis/hg38.RM.L1.ref",
-        orig_mei="meis/PALMER.NA12878.L1.txt",
+        palmer_reads=scratch("palmer_on_target/{sample}/{mei}/read.all.palmer.final.txt"),
+        ref_mei=ref_mei,
+        orig_mei=orig_mei,
     output:
-        out_dir=directory(scratch("intersect/{sample}/")),
-        out_summary=scratch("intersect/{sample}/summary.final.txt"),
+        out_dir=directory(scratch("intersect/{sample}/{mei}/")),
+        out_summary=scratch("intersect/{sample}/{mei}/summary.final.txt"),
     threads: 1 # TODO
     shell:
         logged(
@@ -342,25 +381,32 @@ rule intersect:
             "  {output.out_summary}"
         )
 
+
+def pp_mei(wc):
+    return {
+        "LINE":  "meis/union/L1.inter.fi",
+        "AluYa": "meis/union/ALU.inter.fi",
+    }[wc.mei]
+
 rule intersect_again:
     log:
-        scratch("_logs/intersect_again/{sample}.log"),
+        scratch("_logs/intersect_again/{sample}_{mei}.log"),
     benchmark:
-        scratch("_benchmarks/intersect_again/{sample}.tsv")
+        scratch("_benchmarks/intersect_again/{sample}_{mei}.tsv")
     container:
         containers("nanopal-binaries")
     input:
         script="scripts/intersect-again.sh",
         container=containers("nanopal-binaries"),
         bam=scratch("alignment/{sample}/alignment.bam"),
-        ref_mei="meis/hg38.RM.L1.ref",
-        pp_mei="meis/union/L1.inter.fi",
-        in_summary=scratch("intersect/{sample}/summary.final.txt"),
+        ref_mei=ref_mei,
+        pp_mei=pp_mei,
+        in_summary=scratch("intersect/{sample}/{mei}/summary.final.txt"),
         valid_read_ids=scratch("find_valid_reads/{sample}/RC.all.list"),
     output:
-        out_dir=directory(scratch("intersect_again/{sample}/")),
-        out_summary=scratch("intersect_again/{sample}/summary.final.2.txt"),
-        out_result_log=scratch("intersect_again/{sample}/result-log.txt"),
+        out_dir=directory(scratch("intersect_again/{sample}/{mei}/")),
+        out_summary=scratch("intersect_again/{sample}/{mei}/summary.final.2.txt"),
+        out_result_log=scratch("intersect_again/{sample}/{mei}/result-log.txt"),
     threads: 1 # TODO
     shell:
         logged(
@@ -370,11 +416,11 @@ rule intersect_again:
             "  {input.pp_mei}"
             "  {input.in_summary}"
             "  {input.valid_read_ids}"
+            "  {wildcards.mei}"
             "  {output.out_dir}"
             "  {output.out_summary}"
             "  {output.out_result_log}"
         )
-
 
 
 # PHONY -----------------------------------------------------------------------
@@ -400,17 +446,9 @@ rule _palmer:
     localrule: True
     input:
         expand(
-            scratch("palmer/{sample}/{chromosome}/done"),
+            scratch("palmer/{sample}/{mei}/{chromosome}/done"),
             sample=config["samples"],
-            chromosome=config["chromosomes"],
-        ),
-
-rule _cigar:
-    localrule: True
-    input:
-        expand(
-            scratch("palmer/{sample}/{chromosome}/done"),
-            sample=config["samples"],
+            mei=config["mobile_elements"],
             chromosome=config["chromosomes"],
         ),
 
@@ -418,24 +456,28 @@ rule _on_target:
     localrule: True
     input:
         expand(
-            scratch("find_on_target/{sample}/read.all.txt"),
+            scratch("find_on_target/{sample}/{mei}/read.all.txt"),
             sample=config["samples"],
+            mei=config["mobile_elements"],
         ),
         expand(
-            scratch("palmer_on_target/{sample}/read.all.palmer.final.txt"),
+            scratch("palmer_on_target/{sample}/{mei}/read.all.palmer.final.txt"),
             sample=config["samples"],
+            mei=config["mobile_elements"],
         ),
 
 rule _intersect:
     localrule: True
     input:
         expand(
-            scratch("intersect/{sample}/summary.final.txt"),
+            scratch("intersect/{sample}/{mei}/summary.final.txt"),
             sample=config["samples"],
+            mei=config["mobile_elements"],
         ),
         expand(
-            scratch("intersect_again/{sample}/summary.final.2.txt"),
+            scratch("intersect_again/{sample}/{mei}/summary.final.2.txt"),
             sample=config["samples"],
+            mei=config["mobile_elements"],
         ),
 
 rule _all:

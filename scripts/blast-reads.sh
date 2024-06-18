@@ -4,6 +4,7 @@ set -euo pipefail
 
 mei_fasta="$1"
 reads_fasta="$2"
+mei_cut_site="$3"
 
 function read_lengths {
     # Compute the length of each read in the FASTA, output as:
@@ -56,7 +57,10 @@ function full_input {
 
 
 # Compute hits.
-awk '
+awk \
+    -v cut_lo=100 \
+    -v cut_hi="$mei_cut_site" \
+    '
     function print_result() {
         printf("%s\t%s\t%d\t%d\t%d\t%d\n",
                read_name, read_length, plus5, minus5, plus3, minus3)
@@ -98,8 +102,8 @@ awk '
                 tmp = send; send = sstart; sstart = tmp
             }
 
-            if(send > 5900) {
-                if (qstart < 100 || qend < 100) {
+            if(send > cut_hi) {
+                if (qstart < cut_lo || qend < cut_lo) {
                     if (qstart < qend) {
                         plus5 = 1
                     } else {
