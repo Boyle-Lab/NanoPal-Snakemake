@@ -7,6 +7,8 @@ From: debian:bookworm-slim
     ./nanopal-binaries/bin/cluster      /nanopal-binaries/cluster
     ./nanopal-binaries/bin/RM_collapse  /nanopal-binaries/RM_collapse
     ./nanopal-binaries/merge.1206.o     /nanopal-binaries/merge.1206.o
+    ./nanopal-binaries/intersect        /nanopal-binaries/intersect
+    ./nanopal-binaries/collapse         /nanopal-binaries/collapse
 
 %runscript
     echo "Nanopal binaries are in /nanopal-binaries" && false

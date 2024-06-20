@@ -10,6 +10,8 @@ out_cigar="$4"
 
 find "$palmer_dir" -name 'blastn_refine.txt' | xargs cat > "$out_blast"
 
+# TODO Extract this to an earlier step, since it only depends on the alignment
+# and it's wasteful to do it for every sample+mei.
 samtools view "$bam" \
     -q 10 \
     -F 0x100 \

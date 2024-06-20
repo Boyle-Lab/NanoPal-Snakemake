@@ -4,8 +4,8 @@
 #SBATCH --mail-type=END
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=1
-#SBATCH --mem=1024
+#SBATCH --cpus-per-task=2
+#SBATCH --mem=12288
 #SBATCH --time=4:00:00
 #SBATCH --account=apboyle0
 #SBATCH --partition=standard
@@ -19,5 +19,5 @@ source ~/.bashrc
 module load snakemake
 module load singularity
 
-./run-glakes.sh samples/test-dataset.json \
+./run-glakes.sh samples/real-data-test-gl.json \
     _all

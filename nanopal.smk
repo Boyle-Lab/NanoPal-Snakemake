@@ -12,7 +12,6 @@ BATCH_ID = config["batch_id"]
 DATA_PATH = config["data_path"]
 SCRATCH_PATH = config["scratch_path"]
 CONTAINER_PATH = config["container_path"]
-MOBILE_ELEMENTS = config["mobile_elements"]
 
 
 wildcard_constraints:
@@ -51,18 +50,18 @@ rule input:
     log:
         scratch("_logs/input/{sample}.log"),
     input:
-        data("{sample}"),
+        script="scripts/retrieve-input.sh",
+        input_dir=data("{sample}"),
     output:
         fastq=scratch("input/{sample}/batch.fastq"),
         fasta=scratch("input/{sample}/batch.fasta"),
     threads: 1
     shell:
         logged(
-            "cat {input}/*.fastq > {output.fastq}",
-            r"""cat {output.fastq} | awk '
-                    NR % 4 == 1 {{ printf(">%s\n",substr($0,2)) }}
-                    NR % 4 == 2 {{ print }}
-                ' > {output.fasta}""",
+            "./{input.script} "
+            "  {input.input_dir}"
+            "  {output.fastq}"
+            "  {output.fasta}"
         )
 
 rule index_reference:
@@ -174,6 +173,7 @@ def palmer_mei_param(wc):
     return {
         'LINE': 'LINE',
         'AluYa': 'ALU',
+        'AluYb': 'ALU',
     }[wc.mei]
 
 rule palmer:
@@ -205,7 +205,7 @@ rule palmer:
             "    --output {wildcards.chromosome}"
             "    --ref_fa {input.reference}"
             "    --ref_ver {params.reference_version}"
-            "    --type {wildcards.mei}"
+            "    --type {params.palmer_mei}"
             "    --chr {wildcards.chromosome}"
             "    --mode raw"
         )
@@ -280,6 +280,7 @@ def mei_cut_site(wc):
     return {
         'LINE': 5900,
         'AluYa': 225,
+        'AluYb': 227,
     }[wc.mei]
 
 rule find_on_target:
@@ -346,12 +347,14 @@ def ref_mei(wc):
     return {
         "LINE":  "meis/hg38.RM.L1.ref",
         "AluYa": "meis/hg38.RM.ALU.ref",
+        "AluYb": "meis/hg38.RM.ALU.ref",
     }[wc.mei]
 
 def orig_mei(wc):
     return {
         "LINE":  "meis/PALMER.NA12878.L1.txt",
         "AluYa": "meis/PALMER.NA12878.ALU.txt",
+        "AluYb": "meis/PALMER.NA12878.ALU.txt",
     }[wc.mei]
 
 rule intersect:
@@ -370,13 +373,17 @@ rule intersect:
     output:
         out_dir=directory(scratch("intersect/{sample}/{mei}/")),
         out_summary=scratch("intersect/{sample}/{mei}/summary.final.txt"),
-    threads: 1 # TODO
+    threads: 2 # TODO
+    resources:
+        mem="12GB",
+        runtime="10m",
     shell:
         logged(
             "./{input.script}"
             "  {input.palmer_reads}"
             "  {input.ref_mei}"
             "  {input.orig_mei}"
+            "  {wildcards.mei}"
             "  {output.out_dir}"
             "  {output.out_summary}"
         )
@@ -386,6 +393,7 @@ def pp_mei(wc):
     return {
         "LINE":  "meis/union/L1.inter.fi",
         "AluYa": "meis/union/ALU.inter.fi",
+        "AluYb": "meis/union/ALU.inter.fi",
     }[wc.mei]
 
 rule intersect_again:
@@ -485,6 +493,5 @@ rule _all:
     input:
         rules._palmer.input,
         rules._alignment.input,
-        rules._cigar.input,
         rules._on_target.input,
         rules._intersect.input,

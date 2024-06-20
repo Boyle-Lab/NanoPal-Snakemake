@@ -1,13 +1,13 @@
 {
-    "batch_id": "test-run-03",
+    "batch_id": "real-data-test-02",
     "mobile_elements": ["LINE", "AluYa", "AluYb"],
     "reference_version": "GRCh38",
     "reference":      "/home/slosh/scratch/nanopal-snakemake/ref/hg38.fa",
-    "data_path":      "/home/slosh/scratch/nanopal-snakemake/data",
+    "data_path":      "/nfs/boylelab_turbo/nanopore_data/MEI/AD",
     "scratch_path":   "/home/slosh/scratch/nanopal-snakemake/scratch",
     "container_path": "/home/slosh/scratch/nanopal-snakemake/containers",
     "samples": [
-        "20230104_1040_MN35288_ANL988_7f2231e2"
+        "20230202_1513_MN35288_FAS89555_2289ca4f"
     ],
     "chromosomes": [
         "chr1",
