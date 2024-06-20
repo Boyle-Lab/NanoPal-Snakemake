@@ -1,5 +1,5 @@
 {
-    "batch_id": "real-data-test-01",
+    "batch_id": "real-data-test-02",
     "mobile_elements": ["LINE", "AluYa", "AluYb"],
     "reference_version": "GRCh38",
     "reference":      "/scratch/apboyle_root/apboyle0/slosh/nanopal-snakemake-test-runs/ref/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna",

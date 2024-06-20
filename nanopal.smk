@@ -78,8 +78,8 @@ rule index_reference:
         scratch("reference/index.mmi"),
     threads: 2
     resources:
-        mem="12GB",
-        runtime="15m",
+        mem="16GB",
+        runtime="10m",
     shell:
         logged(
             "minimap2"
@@ -105,8 +105,8 @@ rule alignment:
         scratch("alignment/{sample}/alignment.sam"),
     threads: 16
     resources:
-        mem="48GB",
-        runtime="1h",
+        mem="32GB",
+        runtime="30m",
     shell:
         logged(
             "minimap2"
@@ -411,7 +411,10 @@ rule intersect_again:
         out_dir=directory(scratch("intersect_again/{sample}/{mei}/")),
         out_summary=scratch("intersect_again/{sample}/{mei}/summary.final.2.txt"),
         out_result_log=scratch("intersect_again/{sample}/{mei}/result-log.txt"),
-    threads: 1 # TODO
+    threads: 2 # TODO
+    resources:
+        mem="12GB",
+        runtime="10m",
     shell:
         logged(
             "./{input.script}"
