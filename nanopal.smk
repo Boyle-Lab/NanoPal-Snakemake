@@ -146,6 +146,7 @@ rule index_alignment:
         )
 
 rule find_valid_reads:
+    localrule: True
     log:
         scratch("_logs/find_valid_reads/{sample}.log"),
     benchmark:
@@ -157,10 +158,7 @@ rule find_valid_reads:
         bam=scratch("alignment/{sample}/alignment.bam"),
     output:
         valid_read_ids=scratch("find_valid_reads/{sample}/RC.all.list"),
-    threads: 1
-    resources:
-        mem="8GB",
-        runtime="10m",
+    threads: 2
     shell:
         logged(
             "samtools view {input.bam}"
@@ -313,6 +311,7 @@ rule find_on_target:
         )
 
 rule palmer_on_target:
+    localrule: True
     log:
         scratch("_logs/palmer_on_target/{sample}_{mei}.log"),
     benchmark:
@@ -329,10 +328,7 @@ rule palmer_on_target:
         scratch("palmer_on_target/{sample}/{mei}/read.all.palmer.final.txt")
     params:
         mei_cut_site=mei_cut_site,
-    threads: 1
-    resources:
-        mem="16GB",
-        runtime="15m",
+    threads: 2
     shell:
         logged(
             "./{input.script}"
