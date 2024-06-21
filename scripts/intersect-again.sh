@@ -3,16 +3,15 @@
 set -eu
 set -x
 
-bam="$1" # Nanopore.sorted.bam
-ref_mei=$(readlink -f "$2") # hg38.RM.L1.ref
-pp_mei=$(readlink -f "$3") # L1.inter.fi
-in_summary="$4" # summary.final.txt
-valid_read_ids="$5" # RC.all.list
-mei="$6" # LINE
+ref_mei=$(readlink -f "$1") # hg38.RM.L1.ref
+pp_mei=$(readlink -f "$2") # L1.inter.fi
+in_summary="$3" # summary.final.txt
+valid_read_ids="$4" # RC.all.list
+mei="$5" # LINE
 
-out_dir="$7"
-out_summary="$8" # summary.final.2.txt
-out_result_log="$9" # formerly stdout
+out_dir="$6"
+out_summary="$7" # summary.final.2.txt
+out_result_log="$8" # formerly stdout
 
 mkdir -p "$out_dir"
 cd "$out_dir"
@@ -34,19 +33,29 @@ cd "$out_dir"
 # nothing in the reference that's changing at runtime, right?
 #
 # For now I'm just going to hardcode the stuff in here to move forward.
-if test "$mei" = "LINE"; then
-    cat "$ref_mei" | grep    L1PA > ref.L1PA
-    cat "$ref_mei" | grep    L1HS > ref.L1HS
-    cat "$ref_mei" | grep -v L1HS| grep -v L1PA | grep L1 > ref.L1
-elif test \( "$mei" = "AluYa" \) -o \( "$mei" = "AluYb" \); then
-    cat "$ref_mei" | grep AluYa > ref.AluYa5
-    cat "$ref_mei" | grep AluYb > ref.AluYb8
-    cat "$ref_mei" | grep -v AluYb | grep -v AluYa | grep AluY > ref.AluY
-    cat "$ref_mei" | grep -v AluYb | grep -v AluYa | grep -v AluY | grep Alu > ref.Alu
-else
-    echo Unknown MEI type "$mei", expected LINE, AluYa, or AluYb.
-    exit 1
-fi
+
+case "$mei" in
+    LINE)
+        cat "$ref_mei" | grep    L1PA > ref.L1PA
+        cat "$ref_mei" | grep    L1HS > ref.L1HS
+        cat "$ref_mei" | grep -v L1HS| grep -v L1PA | grep L1 > ref.L1
+        ;;
+    AluYa | AluYb)
+        cat "$ref_mei" | grep AluYa > ref.AluYa5
+        cat "$ref_mei" | grep AluYb > ref.AluYb8
+        cat "$ref_mei" | grep -v AluYb | grep -v AluYa | grep AluY > ref.AluY
+        cat "$ref_mei" | grep -v AluYb | grep -v AluYa | grep -v AluY | grep Alu > ref.Alu
+        ;;
+    SVA_E | SVA_F)
+        cat "$ref_mei" | grep SVA_E > ref.SVA_E
+        cat "$ref_mei" | grep SVA_F > ref.SVA_F
+        cat "$ref_mei" | grep -v SVA_E | grep -v SVA_F | grep SVA > ref.SVA
+        ;;
+    *)
+        echo Unknown MEI type "$mei", expected one of: LINE AluYa AluYb SVA_E SVA_F
+        exit 1
+        ;;
+esac
 
 # Tack on an extra column to the end of the summary file, with 1 if the read ID
 # is in the list of valid mapped reads, 0 if it's not.
@@ -130,20 +139,30 @@ cat capture.loci.palmer | awk '!/cluster/ {print $1,$2,$2+1,$3,$4,$5,$6,"Nanopor
 
 cat capture.loci.ref capture.loci.ref.add > capture.loci.ref.all
 
-if test "$mei" = "LINE"; then
-    cat capture.loci.ref.all | grep L1HS |                                awk '{print $1,$2,$2+1,$3,$4,$5,"Nanopore"}' > capture.loci.r.l1hs
-    cat capture.loci.ref.all | grep -v L1HS | grep L1PA |                 awk '{print $1,$2,$2+1,$3,$4,$5,"Nanopore"}' > capture.loci.r.l1pa
-    cat capture.loci.ref.all | grep -v L1HS | grep -v L1PA | grep L1 |    awk '{print $1,$2,$2+1,$3,$4,$5,"Nanopore"}' > capture.loci.r.l1other
-    cat capture.loci.ref.all | grep -v L1HS | grep -v L1PA | grep -v L1 | awk '{print $1,$2,$2+1,$3,$4,$5,"Nanopore"}' > capture.loci.r.l1non
-elif test \( "$mei" = "AluYa" \) -o \( "$mei" = "AluYb" \); then
-    cat capture.loci.ref.all | grep AluYa |                                   awk '{print $1,$2,$2+1,$3,$4,$5,"Nanopore"}' > capture.loci.r.AluYa5
-    cat capture.loci.ref.all | grep AluYb |                                   awk '{print $1,$2,$2+1,$3,$4,$5,"Nanopore"}' > capture.loci.r.AluYb8
-    cat capture.loci.ref.all | grep -v AluYa | grep -v AluYb | grep AluY    | awk '{print $1,$2,$2+1,$3,$4,$5,"Nanopore"}' > capture.loci.r.AluYother
-    cat capture.loci.ref.all | grep -v AluYa | grep -v AluYb | grep -v AluY | awk '{print $1,$2,$2+1,$3,$4,$5,"Nanopore"}' > capture.loci.r.AluYnon
-else
-    echo Unknown MEI type "$mei", expected LINE, AluYa, or AluYb.
-    exit 1
-fi
+case "$mei" in
+    LINE)
+        cat capture.loci.ref.all | grep L1HS |                                awk '{print $1,$2,$2+1,$3,$4,$5,"Nanopore"}' > capture.loci.r.l1hs
+        cat capture.loci.ref.all | grep -v L1HS | grep L1PA |                 awk '{print $1,$2,$2+1,$3,$4,$5,"Nanopore"}' > capture.loci.r.l1pa
+        cat capture.loci.ref.all | grep -v L1HS | grep -v L1PA | grep L1 |    awk '{print $1,$2,$2+1,$3,$4,$5,"Nanopore"}' > capture.loci.r.l1other
+        cat capture.loci.ref.all | grep -v L1HS | grep -v L1PA | grep -v L1 | awk '{print $1,$2,$2+1,$3,$4,$5,"Nanopore"}' > capture.loci.r.l1non
+        ;;
+    AluYa | AluYb)
+        cat capture.loci.ref.all | grep AluYa |                                   awk '{print $1,$2,$2+1,$3,$4,$5,"Nanopore"}' > capture.loci.r.AluYa5
+        cat capture.loci.ref.all | grep AluYb |                                   awk '{print $1,$2,$2+1,$3,$4,$5,"Nanopore"}' > capture.loci.r.AluYb8
+        cat capture.loci.ref.all | grep -v AluYa | grep -v AluYb | grep AluY    | awk '{print $1,$2,$2+1,$3,$4,$5,"Nanopore"}' > capture.loci.r.AluYother
+        cat capture.loci.ref.all | grep -v AluYa | grep -v AluYb | grep -v AluY | awk '{print $1,$2,$2+1,$3,$4,$5,"Nanopore"}' > capture.loci.r.AluYnon
+        ;;
+    SVA_E | SVA_F)
+        cat capture.loci.ref.all | grep SVA_E |                                  awk '{print $1,$2,$2+1,$3,$4,$5,"Nanopore"}' > capture.loci.r.SVA_E
+        cat capture.loci.ref.all | grep SVA_F |                                  awk '{print $1,$2,$2+1,$3,$4,$5,"Nanopore"}' > capture.loci.r.SVA_F
+        cat capture.loci.ref.all | grep -v SVA_E | grep -v SVA_F | grep SVA    | awk '{print $1,$2,$2+1,$3,$4,$5,"Nanopore"}' > capture.loci.r.SVAother
+        cat capture.loci.ref.all | grep -v SVA_E | grep -v SVA_F | grep -v SVA | awk '{print $1,$2,$2+1,$3,$4,$5,"Nanopore"}' > capture.loci.r.SVAnon
+        ;;
+    *)
+        echo Unknown MEI type "$mei", expected one of: LINE AluYa AluYb SVA_E SVA_F
+        exit 1
+        ;;
+esac
 
 #######MEI
 cp "${pp_mei}" Q.txt
@@ -157,132 +176,143 @@ cp capture.loci.potential.process S.txt
 intersect Q.txt S.txt > inter.txt
 mv inter.txt inter.palmer.add.txt
 
-if test "$mei" = "LINE"; then
-    cp ref.L1HS Q.txt
-    cp capture.loci.r.l1hs S.txt
-    # inter
-    intersect Q.txt S.txt > inter.txt
-    mv inter.txt inter.r.l1hs.txt
-
-    cp ref.L1PA Q.txt
-    cp capture.loci.r.l1pa S.txt
-    # inter
-    intersect Q.txt S.txt > inter.txt
-    mv inter.txt inter.r.l1pa.txt
-
-    cp ref.L1 Q.txt
-    cp capture.loci.r.l1other S.txt
-    # inter
-    intersect Q.txt S.txt > inter.txt
-    mv inter.txt inter.r.l1.txt
-elif test \( "$mei" = "AluYa" \) -o \( "$mei" = "AluYb" \); then
-    cp ref.AluYa5 Q.txt
-    cp capture.loci.r.AluYa5 S.txt
-    # inter
-    intersect Q.txt S.txt > inter.txt
-    mv inter.txt inter.r.AluYa5.txt
-
-    cp ref.AluYb8 Q.txt
-    cp capture.loci.r.AluYb8 S.txt
-    # inter
-    intersect Q.txt S.txt > inter.txt
-    mv inter.txt inter.r.AluYb8.txt
-
-    cp ref.AluY Q.txt
-    cp capture.loci.r.AluYother S.txt
-    # inter
-    intersect Q.txt S.txt > inter.txt
-    mv inter.txt inter.r.AluY.txt
-
-    cp ref.Alu Q.txt
-    cp capture.loci.r.AluYnon S.txt
-    # inter
-    intersect Q.txt S.txt > inter.txt
-    mv inter.txt inter.r.Alu.txt
-else
-    echo Unknown MEI type "$mei", expected LINE, AluYa, or AluYb.
-    exit 1
-fi
+case "$mei" in
+    LINE)
+        intersect ref.L1HS capture.loci.r.l1hs    > inter.r.l1hs.txt
+        intersect ref.L1PA capture.loci.r.l1pa    > inter.r.l1pa.txt
+        intersect ref.L1   capture.loci.r.l1other > inter.r.l1.txt
+        ;;
+    AluYa | AluYb)
+        intersect ref.AluYa5 capture.loci.r.AluYa5    > inter.r.AluYa5.txt
+        intersect ref.AluYb8 capture.loci.r.AluYb8    > inter.r.AluYb8.txt
+        intersect ref.AluY   capture.loci.r.AluYother > inter.r.AluY.txt
+        intersect ref.Alu    capture.loci.r.AluYnon   > inter.r.Alu.txt
+        ;;
+    SVA_E | SVA_F)
+        intersect ref.SVA_E capture.loci.r.SVA_E    > inter.r.SVA_E.txt
+        intersect ref.SVA_F capture.loci.r.SVA_F    > inter.r.SVA_F.txt
+        intersect ref.SVA   capture.loci.r.SVAother > inter.r.SVA.txt
+        ;;
+    *)
+        echo Unknown MEI type "$mei", expected one of: LINE AluYa AluYb SVA_E SVA_F
+        exit 1
+        ;;
+esac
 
 # From Nanopal script: report the numbers of captured events
 cat inter.palmer.txt inter.palmer.add.txt | grep Nano | awk '{print $1,$2,$3,$4,$5,$6,$7,$8,$9,$10}' | sort | uniq -c > p.txt.fi
 
-if test "$mei" = "LINE"; then
-    cat inter.r.l1hs.txt | grep Nano | awk '{print $1,$2,$3}' | sort | uniq -c > r.l1hs.txt.fi
-    cat inter.r.l1pa.txt | grep Nano | awk '{print $1,$2,$3}' | sort | uniq -c > r.l1pa.txt.fi
-    cat inter.r.l1.txt   | grep Nano | awk '{print $1,$2,$3}' | sort | uniq -c > r.l1.txt.fi
-elif test \( "$mei" = "AluYa" \) -o \( "$mei" = "AluYb" \); then
-    cat inter.r.AluYa5.txt | grep Nano | awk '{print $1,$2,$3}'    | sort | uniq -c > r.AluYa5.txt.fi
-    cat inter.r.AluYb8.txt | grep Nano | awk '{print $1,$2,$3}'    | sort | uniq -c > r.AluYb8.txt.fi
-    cat inter.r.AluY.txt   | grep Nano | awk '{print $1,$2,$3,$4}' | sort | uniq -c > r.AluY.txt.fi
-    cat inter.r.Alu.txt    | grep Nano | awk '{print $1,$2,$3,$4}' | sort | uniq -c > r.Alu.txt.fi
-else
-    echo Unknown MEI type "$mei", expected LINE, AluYa, or AluYb.
-    exit 1
-fi
+case "$mei" in
+    LINE)
+        cat inter.r.l1hs.txt | grep Nano | awk '{print $1,$2,$3}' | sort | uniq -c > r.l1hs.txt.fi
+        cat inter.r.l1pa.txt | grep Nano | awk '{print $1,$2,$3}' | sort | uniq -c > r.l1pa.txt.fi
+        cat inter.r.l1.txt   | grep Nano | awk '{print $1,$2,$3}' | sort | uniq -c > r.l1.txt.fi
+        ;;
+    AluYa | AluYb)
+        cat inter.r.AluYa5.txt | grep Nano | awk '{print $1,$2,$3}'    | sort | uniq -c > r.AluYa5.txt.fi
+        cat inter.r.AluYb8.txt | grep Nano | awk '{print $1,$2,$3}'    | sort | uniq -c > r.AluYb8.txt.fi
+        cat inter.r.AluY.txt   | grep Nano | awk '{print $1,$2,$3,$4}' | sort | uniq -c > r.AluY.txt.fi
+        cat inter.r.Alu.txt    | grep Nano | awk '{print $1,$2,$3,$4}' | sort | uniq -c > r.Alu.txt.fi
+        ;;
+    SVA_E | SVA_F)
+        cat inter.r.SVA_E.txt | grep Nano | awk '{print $1,$2,$3}'     | sort | uniq -c > r.SVA_E.txt.fi
+        cat inter.r.SVA_F.txt | grep Nano | awk '{print $1,$2,$3}'     | sort | uniq -c > r.SVA_F.txt.fi
+        cat inter.r.SVA.txt   | grep Nano | awk '{print $1,$2,$3, $4}' | sort | uniq -c > r.SVA.txt.fi
 
-cp capture.loci.potential.process Q.txt
+        cat r.SVA.txt.fi | grep SVA_D    > r.SVA_D.txt.fi
+        cat r.SVA.txt.fi | grep -v SVA_D > r.SVAother.txt.fi
+        ;;
+    *)
+        echo Unknown MEI type "$mei", expected one of: LINE AluYa AluYb SVA_E SVA_F
+        exit 1
+        ;;
+esac
 
-cp "${pp_mei}" S.txt
-# inter
-intersect Q.txt S.txt > inter.txt
-awk '!/cluster/' inter.txt > inter.potential.txt
+# awk ! instead of grep -v because grep will exit nonzero if nothing is found.
+intersect capture.loci.potential.process "${pp_mei}" \
+    | awk '!/cluster/' \
+    > inter.potential.txt
 
 cp inter.potential.txt input_cluster.txt
 cluster
 cp clustered.txt potential.clustered.txt.fi
 
-rm -f "$out_result_log"
+{
+    echo There are "${SIGNAL1}" reads caputuring putative L1 signals on one end.
+    echo There are "${SIGNAL2}" reads caputuring putative L1 signals on both ends.
+    echo There are "${FAIL}" reads having no putative L1 signals.
 
-echo There are ${SIGNAL1} reads caputuring putative L1 signals on one end. >> "$out_result_log"
-echo There are ${SIGNAL2} reads caputuring putative L1 signals on both ends. >> "$out_result_log"
-echo There are ${FAIL} reads having no putative L1 signals. >> "$out_result_log"
+    case "$mei" in
+        LINE)
+            cat p.txt.fi | awk '{sum+=$1} END {print "Non-reference L1Hs sum = ", sum}'
+            cat r.l1hs.txt.fi | awk '{sum+=$1} END {print "Reference L1Hs sum = ", sum}'
+            cat r.l1pa.txt.fi | awk '{sum+=$1} END {print "Reference L1PA sum = ", sum}'
+            cat r.l1.txt.fi | awk '{sum+=$1} END {print "Other reference L1 sum = ", sum}'
+            cat potential.clustered.txt.fi | awk '{sum+=$4} END {print "Potential non-reference L1Hs sum = ", sum}'
+            echo "Number of non_LINE reads"
+            cat capture.loci.r.l1non | wc -l | awk '{print $1}'
 
-if test "$mei" = "LINE"; then
-    cat p.txt.fi | awk '{sum+=$1} END {print "Non-reference L1Hs sum = ", sum}' >> "$out_result_log"
-    cat r.l1hs.txt.fi | awk '{sum+=$1} END {print "Reference L1Hs sum = ", sum}' >> "$out_result_log"
-    cat r.l1pa.txt.fi | awk '{sum+=$1} END {print "Reference L1PA sum = ", sum}' >> "$out_result_log"
-    cat r.l1.txt.fi | awk '{sum+=$1} END {print "Other reference L1 sum = ", sum}' >> "$out_result_log"
-    cat potential.clustered.txt.fi | awk '{sum+=$4} END {print "Potential non-reference L1Hs sum = ", sum}' >> "$out_result_log"
-    echo "Number of non_LINE reads" >> "$out_result_log"
-    cat capture.loci.r.l1non | wc -l | awk '{print $1}' >> "$out_result_log"
+            echo "Number of non-reference L1Hs and the file (number of supporting reads + coordinate + overlap information)"
+            wc -l p.txt.fi
+            echo "Number of reference L1Hs and the file (number of supporting reads + coordinate)"
+            wc -l r.l1hs.txt.fi
+            echo "Number of reference L1PA and the file (number of supporting reads + coordinate)"
+            wc -l r.l1pa.txt.fi
+            echo "Number of other reference L1 and the file (number of supporting reads + coordinate)"
+            wc -l r.l1.txt.fi
+            echo "Number of potential specific non-reference L1Hs and the file (coordinate + number of supporting reads + number of left supporting reads + number of right supporting reads + strand)"
+            wc -l potential.clustered.txt.fi
+            ;;
+        AluYa | AluYb)
+            cat p.txt.fi | awk '{sum+=$1} END {print "Non-reference AluY reads sum = ", sum}'
+            cat r.AluYa5.txt.fi | awk '{sum+=$1} END {print "Reference AluYa reads sum = ", sum}'
+            cat r.AluYb8.txt.fi | awk '{sum+=$1} END {print "Reference AluYb reads sum = ", sum}'
+            cat r.AluY.txt.fi | awk '{sum+=$1} END {print "Other reference AluY reads sum = ", sum}'
+            cat capture.loci.r.AluYnon | grep -c Alu | awk '{print "Other reference Alu reads sum = "$1}'
+            cat potential.clustered.txt.fi | awk '{sum+=$4} END {print "Potential specific non-reference AluY reads sum = ", sum}'
+            echo "Number of non_Alu reads"
+            cat capture.loci.r.AluYnon | grep -v Alu | awk '{print $1}'
 
-    echo "Number of non-reference L1Hs and the file (number of supporting reads + coordinate + overlap information)" >> "$out_result_log"
-    wc -l p.txt.fi >> "$out_result_log"
-    echo "Number of reference L1Hs and the file (number of supporting reads + coordinate)" >> "$out_result_log"
-    wc -l r.l1hs.txt.fi >> "$out_result_log"
-    echo "Number of reference L1PA and the file (number of supporting reads + coordinate)" >> "$out_result_log"
-    wc -l r.l1pa.txt.fi >> "$out_result_log"
-    echo "Number of other reference L1 and the file (number of supporting reads + coordinate)" >> "$out_result_log"
-    wc -l r.l1.txt.fi >> "$out_result_log"
-    echo "Number of potential specific non-reference L1Hs and the file (coordinate + number of supporting reads + number of left supporting reads + number of right supporting reads + strand)" >> "$out_result_log"
-    wc -l potential.clustered.txt.fi >> "$out_result_log"
-elif test \( "$mei" = "AluYa" \) -o \( "$mei" = "AluYb" \); then
-    cat p.txt.fi | awk '{sum+=$1} END {print "Non-reference AluY reads sum = ", sum}' >> "$out_result_log"
-    cat r.AluYa5.txt.fi | awk '{sum+=$1} END {print "Reference AluYa reads sum = ", sum}' >> "$out_result_log"
-    cat r.AluYb8.txt.fi | awk '{sum+=$1} END {print "Reference AluYb reads sum = ", sum}' >> "$out_result_log"
-    cat r.AluY.txt.fi | awk '{sum+=$1} END {print "Other reference AluY reads sum = ", sum}' >> "$out_result_log"
-    cat capture.loci.r.AluYnon | grep Alu | wc -l | awk '{print "Other reference Alu reads sum = "$1}' >> "$out_result_log"
-    cat potential.clustered.txt.fi | awk '{sum+=$4} END {print "Potential specific non-reference AluY reads sum = ", sum}' >> "$out_result_log"
-    echo "Number of non_Alu reads" >> "$out_result_log"
-    cat capture.loci.r.AluYnon | grep -v Alu | wc -l | awk '{print $1}' >> "$out_result_log"
+            echo "Number of non-reference AluY and the file (number of supporting reads + coordinate + overlap information)"
+            wc -l p.txt.fi
+            echo "Number of reference AluYa and the file (number of supporting reads + coordinate)"
+            wc -l r.AluYa5.txt.fi
+            echo "Number of reference AluYb and the file (number of supporting reads + coordinate)"
+            wc -l r.AluYb8.txt.fi
+            echo "Number of other reference AluY and the file (number of supporting reads + coordinate)"
+            wc -l r.AluY.txt.fi
+            echo "Number of other reference Alu and the file (number of supporting reads + coordinate)"
+            wc -l r.Alu.txt.fi
+            echo "Number of potential specific non-reference AluY and the file (coordinate + number of supporting reads + number of left supporting reads + number of right supporting reads + strand)"
+            wc -l potential.clustered.txt.fi
+            ;;
+        SVA_E | SVA_F)
+            cat p.txt.fi | awk '{sum+=$1} END {print "Non-reference SVA reads sum = ", sum}'
+            cat r.SVA_E.txt.fi | awk '{sum+=$1} END {print "Reference SVA_E reads sum = ", sum}'
+            cat r.SVA_F.txt.fi | awk '{sum+=$1} END {print "Reference SVA_F reads sum = ", sum}'
+            cat r.SVA_D.txt.fi | awk '{sum+=$1} END {print "Reference SVA_D reads sum = ", sum}'
+            cat r.SVAother.txt.fi | awk '{sum+=$1} END {print "Other reference SVA reads sum = ", sum}'
+            cat potential.clustered.txt.fi | awk '{sum+=$4} END {print "Potential specific non-reference SVA reads sum = ", sum}'
+            echo "Number of non_SVA reads"
+            cat capture.loci.r.SVAnon | wc -l | awk '{print $1}'
 
-    echo "Number of non-reference AluY and the file (number of supporting reads + coordinate + overlap information)" >> "$out_result_log"
-    wc -l p.txt.fi >> "$out_result_log"
-    echo "Number of reference AluYa and the file (number of supporting reads + coordinate)" >> "$out_result_log"
-    wc -l r.AluYa5.txt.fi >> "$out_result_log"
-    echo "Number of reference AluYb and the file (number of supporting reads + coordinate)" >> "$out_result_log"
-    wc -l r.AluYb8.txt.fi >> "$out_result_log"
-    echo "Number of other reference AluY and the file (number of supporting reads + coordinate)" >> "$out_result_log"
-    wc -l r.AluY.txt.fi >> "$out_result_log"
-    echo "Number of other reference Alu and the file (number of supporting reads + coordinate)" >> "$out_result_log"
-    wc -l r.Alu.txt.fi >> "$out_result_log"
-    echo "Number of potential specific non-reference AluY and the file (coordinate + number of supporting reads + number of left supporting reads + number of right supporting reads + strand)" >> "$out_result_log"
-    wc -l potential.clustered.txt.fi >> "$out_result_log"
-else
-    echo Unknown MEI type "$mei", expected LINE, AluYa, or AluYb.
-    exit 1
-fi
-
-
+            echo "Number of non-reference SVA and the file (number of supporting reads + coordinate + overlap information)"
+            wc -l p.txt.fi
+            echo "Number of reference SVA_E and the file (number of supporting reads + coordinate)"
+            wc -l r.SVA_E.txt.fi
+            echo "Number of reference SVA_F and the file (number of supporting reads + coordinate)"
+            wc -l r.SVA_F.txt.fi
+            echo "Number of reference SVA_D and the file (number of supporting reads + coordinate)"
+            wc -l r.SVA_D.txt.fi
+            echo "Number of other reference SVA and the file (number of supporting reads + coordinate)"
+            wc -l r.SVAother.txt.fi
+            echo "Number of potential specific non-reference SVA and the file (coordinate + number of supporting reads + number of left supporting reads + number of right supporting reads + strand)"
+            wc -l potential.clustered.txt.fi
+            ;;
+        *)
+            echo Unknown MEI type "$mei", expected one of: LINE AluYa AluYb SVA_E SVA_F
+            exit 1
+            ;;
+    esac
+} > "$out_result_log"
 

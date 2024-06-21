@@ -172,6 +172,8 @@ def palmer_mei_param(wc):
         'LINE': 'LINE',
         'AluYa': 'ALU',
         'AluYb': 'ALU',
+        'SVA_E': 'SVA',
+        'SVA_F': 'SVA',
     }[wc.mei]
 
 rule palmer:
@@ -272,13 +274,17 @@ def mei_fasta(wc):
         'LINE': "meis/L1.3",
         'AluYa': "meis/AluYa5",
         'AluYb': "meis/AluYb8",
+        'SVA_E': "meis/SVA_E",
+        'SVA_F': "meis/SVA_F",
     }[wc.mei]
 
 def mei_cut_site(wc):
     return {
-        'LINE': 5900,
-        'AluYa': 225,
-        'AluYb': 227,
+        'LINE':  5900,
+        'AluYa':  225,
+        'AluYb':  227,
+        'SVA_E':  930,
+        'SVA_F': 1006,
     }[wc.mei]
 
 rule find_on_target:
@@ -344,6 +350,8 @@ def ref_mei(wc):
         "LINE":  "meis/hg38.RM.L1.ref",
         "AluYa": "meis/hg38.RM.ALU.ref",
         "AluYb": "meis/hg38.RM.ALU.ref",
+        "SVA_E": "meis/hg38.RM.SVA.ref",
+        "SVA_F": "meis/hg38.RM.SVA.ref",
     }[wc.mei]
 
 def orig_mei(wc):
@@ -351,6 +359,8 @@ def orig_mei(wc):
         "LINE":  "meis/PALMER.NA12878.L1.txt",
         "AluYa": "meis/PALMER.NA12878.ALU.txt",
         "AluYb": "meis/PALMER.NA12878.ALU.txt",
+        "SVA_E": "meis/PALMER.NA12878.SVA.txt",
+        "SVA_F": "meis/PALMER.NA12878.SVA.txt",
     }[wc.mei]
 
 rule intersect:
@@ -390,6 +400,8 @@ def pp_mei(wc):
         "LINE":  "meis/union/L1.inter.fi",
         "AluYa": "meis/union/ALU.inter.fi",
         "AluYb": "meis/union/ALU.inter.fi",
+        "SVA_E": "meis/union/SVA.inter.fi",
+        "SVA_F": "meis/union/SVA.inter.fi",
     }[wc.mei]
 
 rule intersect_again:
@@ -402,7 +414,6 @@ rule intersect_again:
     input:
         script="scripts/intersect-again.sh",
         container=containers("nanopal-binaries"),
-        bam=scratch("alignment/{sample}/alignment.bam"),
         ref_mei=ref_mei,
         pp_mei=pp_mei,
         in_summary=scratch("intersect/{sample}/{mei}/summary.final.txt"),
@@ -418,7 +429,6 @@ rule intersect_again:
     shell:
         logged(
             "./{input.script}"
-            "  {input.bam}"
             "  {input.ref_mei}"
             "  {input.pp_mei}"
             "  {input.in_summary}"
@@ -488,6 +498,7 @@ rule _intersect:
         ),
 
 rule _all:
+    default_target: True
     localrule: True
     input:
         rules._palmer.input,
