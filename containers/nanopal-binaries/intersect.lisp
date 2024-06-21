@@ -55,7 +55,7 @@
   (destructuring-bind (path1 path2) (rest (adopt:argv))
     (run path1 path2)))
 
-(defun build ()
-  (sb-ext:save-lisp-and-die "intersect"
+(defun build (dest)
+  (sb-ext:save-lisp-and-die dest
     :toplevel #'toplevel
     :executable t :compression t :save-runtime-options t))

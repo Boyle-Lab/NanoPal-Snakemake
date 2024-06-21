@@ -21,8 +21,8 @@
 (defun toplevel ()
   (run (second (adopt:argv))))
 
-(defun build ()
-  (sb-ext:save-lisp-and-die "collapse"
+(defun build (dest)
+  (sb-ext:save-lisp-and-die dest
     :toplevel #'toplevel
     :executable t :compression t :save-runtime-options t))
 

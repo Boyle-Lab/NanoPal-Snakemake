@@ -20,10 +20,8 @@ bin/cluster: cluster.1219.cpp Makefile
 
 bin/intersect: intersect.lisp Makefile
 	mkdir -p bin
-	sbcl --disable-debugger --load $< --eval '(intersect::build)'
-	mv intersect $@
+	sbcl --disable-debugger --load $< --eval '(intersect::build "'$@'")'
 
 bin/collapse: collapse.lisp Makefile
 	mkdir -p bin
-	sbcl --disable-debugger --load $< --eval '(collapse::build)'
-	mv collapse $@
+	sbcl --disable-debugger --load $< --eval '(collapse::build "'$@'")'
