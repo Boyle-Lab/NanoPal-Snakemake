@@ -19,9 +19,11 @@ bin/cluster: cluster.1219.cpp Makefile
 	g++ -o $@ -Wall -O2 $<
 
 bin/intersect: intersect.lisp Makefile
-	sbcl --disable-debugger --load intersect.lisp --eval '(intersect::build)'
-	mv intersect bin/
+	mkdir -p bin
+	sbcl --disable-debugger --load $< --eval '(intersect::build)'
+	mv intersect $@
 
 bin/collapse: collapse.lisp Makefile
-	sbcl --disable-debugger --load collapse.lisp --eval '(collapse::build)'
-	mv collapse bin/
+	mkdir -p bin
+	sbcl --disable-debugger --load $< --eval '(collapse::build)'
+	mv collapse $@
