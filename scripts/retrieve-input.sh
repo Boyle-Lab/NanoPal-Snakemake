@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 
 set -euo pipefail
+set -x
 
 input_dirs="$1"
 
-output_fastq="$2"
-output_fasta="$3"
-output_basecall_info="$4"
+export output_fastq="$2"
+export output_fasta="$3"
+export output_basecall_info="$4"
 
 rm -f "$output_fastq"
 rm -f "$output_basecall_info"
