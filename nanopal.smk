@@ -114,7 +114,7 @@ rule alignment:
     threads: 16
     resources:
         mem="32GB",
-        runtime="30m",
+        runtime="1h",
     shell:
         logged(
             "minimap2"
@@ -144,7 +144,7 @@ rule index_alignment:
     threads: 2  # TODO
     resources:
         mem="8GB",
-        runtime="20m",
+        runtime="30m",
     shell:
         logged(
             r"""
