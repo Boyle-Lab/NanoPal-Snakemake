@@ -45,10 +45,9 @@ rule container:
         "singularity pull {output} {params.source}"
 
 def dataset_input_dirs(wc):
-    return '\n'.join(config["datasets"][wc.id])
+    return [directory(d) for d in config["datasets"][wc.id]]
 
 rule input:
-    localrule: True
     log:
         scratch("_logs/input/{id}.log"),
     input:
@@ -58,11 +57,16 @@ rule input:
         fastq=scratch("input/{id}/batch.fastq"),
         fasta=scratch("input/{id}/batch.fasta"),
         basecall_info=scratch("input/{id}/basecall_info.txt"),
-    threads: 1
+    params:
+        input_dir_string=lambda wc, input: '\n'.join(input.input_dirs),
+    threads: 2
+    resources:
+        mem="4GB",
+        runtime="1h",
     shell:
         logged(
             "./{input.script} "
-            "  {input.input_dirs}"
+            "  {params.input_dir_string:q}"
             "  {output.fastq}"
             "  {output.fasta}"
             "  {output.basecall_info}"
