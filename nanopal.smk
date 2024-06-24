@@ -7,9 +7,8 @@ import os
 configfile: "config/base.json"
 
 
-SAMPLES = config["samples"]
+IDS = config["datasets"].keys()
 BATCH_ID = config["batch_id"]
-DATA_PATH = config["data_path"]
 SCRATCH_PATH = config["scratch_path"]
 CONTAINER_PATH = config["container_path"]
 
@@ -45,23 +44,28 @@ rule container:
     shell:
         "singularity pull {output} {params.source}"
 
+def dataset_input_dirs(wc):
+    return '\n'.join(config["datasets"][wc.id])
+
 rule input:
     localrule: True
     log:
-        scratch("_logs/input/{sample}.log"),
+        scratch("_logs/input/{id}.log"),
     input:
         script="scripts/retrieve-input.sh",
-        input_dir=data("{sample}"),
+        input_dirs=dataset_input_dirs,
     output:
-        fastq=scratch("input/{sample}/batch.fastq"),
-        fasta=scratch("input/{sample}/batch.fasta"),
+        fastq=scratch("input/{id}/batch.fastq"),
+        fasta=scratch("input/{id}/batch.fasta"),
+        basecall_info=scratch("input/{id}/basecall_info.txt"),
     threads: 1
     shell:
         logged(
             "./{input.script} "
-            "  {input.input_dir}"
+            "  {input.input_dirs}"
             "  {output.fastq}"
             "  {output.fasta}"
+            "  {output.basecall_info}"
         )
 
 rule index_reference:
@@ -92,17 +96,17 @@ rule index_reference:
 
 rule alignment:
     log:
-        scratch("_logs/alignment/{sample}.log"),
+        scratch("_logs/alignment/{id}.log"),
     benchmark:
-        scratch("_benchmarks/alignment/{sample}.tsv")
+        scratch("_benchmarks/alignment/{id}.tsv")
     container:
         containers("minimap2")
     input:
         container=containers("minimap2"),
-        fastq=scratch("input/{sample}/batch.fastq"),
+        fastq=scratch("input/{id}/batch.fastq"),
         index=scratch("reference/index.mmi"),
     output:
-        scratch("alignment/{sample}/alignment.sam"),
+        scratch("alignment/{id}/alignment.sam"),
     threads: 16
     resources:
         mem="32GB",
@@ -122,17 +126,17 @@ rule alignment:
 
 rule index_alignment:
     log:
-        scratch("_logs/index_alignment/{sample}.log"),
+        scratch("_logs/index_alignment/{id}.log"),
     benchmark:
-        scratch("_benchmarks/index_alignment/{sample}.tsv")
+        scratch("_benchmarks/index_alignment/{id}.tsv")
     container:
         containers("samtools")
     input:
         container=containers("samtools"),
-        sam=scratch("alignment/{sample}/alignment.sam"),
+        sam=scratch("alignment/{id}/alignment.sam"),
     output:
-        bam=scratch("alignment/{sample}/alignment.bam"),
-        bai=scratch("alignment/{sample}/alignment.bam.bai"),
+        bam=scratch("alignment/{id}/alignment.bam"),
+        bai=scratch("alignment/{id}/alignment.bam.bai"),
     threads: 2  # TODO
     resources:
         mem="8GB",
@@ -148,16 +152,16 @@ rule index_alignment:
 rule find_valid_reads:
     localrule: True
     log:
-        scratch("_logs/find_valid_reads/{sample}.log"),
+        scratch("_logs/find_valid_reads/{id}.log"),
     benchmark:
-        scratch("_benchmarks/find_valid_reads/{sample}.tsv")
+        scratch("_benchmarks/find_valid_reads/{id}.tsv")
     container:
         containers("samtools")
     input:
         container=containers("samtools"),
-        bam=scratch("alignment/{sample}/alignment.bam"),
+        bam=scratch("alignment/{id}/alignment.bam"),
     output:
-        valid_read_ids=scratch("find_valid_reads/{sample}/RC.all.list"),
+        valid_read_ids=scratch("find_valid_reads/{id}/RC.all.list"),
     threads: 2
     shell:
         logged(
@@ -178,19 +182,19 @@ def palmer_mei_param(wc):
 
 rule palmer:
     log:
-        scratch("_logs/palmer/{sample}_{mei}_{chromosome}.log"),
+        scratch("_logs/palmer/{id}_{mei}_{chromosome}.log"),
     benchmark:
-        scratch("_benchmarks/palmer/{sample}_{mei}_{chromosome}.tsv")
+        scratch("_benchmarks/palmer/{id}_{mei}_{chromosome}.tsv")
     container:
         containers("palmer")
     input:
         container=containers("palmer"),
         reference=config["reference"],
-        bam=scratch("alignment/{sample}/alignment.bam"),
+        bam=scratch("alignment/{id}/alignment.bam"),
     output:
-        sentinel=touch(scratch("palmer/{sample}/{mei}/{chromosome}/done")),
+        sentinel=touch(scratch("palmer/{id}/{mei}/{chromosome}/done")),
     params:
-        workdir=scratch("palmer/{sample}/{mei}/{chromosome}/"),
+        workdir=scratch("palmer/{id}/{mei}/{chromosome}/"),
         reference_version=config["reference_version"],
         palmer_mei=palmer_mei_param,
     threads: 2  # TODO
@@ -216,24 +220,24 @@ rule gather_matches:
     # > pull out all reads having putative L1Hs signal reported by PALMER
     localrule: True
     log:
-        scratch("_logs/gather_matches/{sample}_{mei}.log"),
+        scratch("_logs/gather_matches/{id}_{mei}.log"),
     benchmark:
-        scratch("_benchmarks/gather_matches/{sample}_{mei}.tsv")
+        scratch("_benchmarks/gather_matches/{id}_{mei}.tsv")
     container:
         containers("samtools")
     input:
         container=containers("samtools"),
         script="scripts/gather-palmer-results.sh",
         palmer_sentinels=expand(
-            scratch("palmer/{{sample}}/{{mei}}/{chromosome}/done"),
+            scratch("palmer/{{id}}/{{mei}}/{chromosome}/done"),
             chromosome=config["chromosomes"],
         ),
-        bam=scratch("alignment/{sample}/alignment.bam"),
+        bam=scratch("alignment/{id}/alignment.bam"),
     output:
-        palmer_blast=scratch("gather_matches/{sample}/{mei}/blastn_refine.all.txt"),
-        palmer_cigar=scratch("gather_matches/{sample}/{mei}/mapped.info.txt"),
+        palmer_blast=scratch("gather_matches/{id}/{mei}/blastn_refine.all.txt"),
+        palmer_cigar=scratch("gather_matches/{id}/{mei}/mapped.info.txt"),
     params:
-        palmer_dir=scratch("palmer/{sample}/{mei}/"),
+        palmer_dir=scratch("palmer/{id}/{mei}/"),
     threads: 1
     shell:
         logged(
@@ -247,18 +251,18 @@ rule gather_matches:
 rule parse_cigar:
     localrule: True
     log:
-        scratch("_logs/parse_cigar/{sample}_{mei}.log"),
+        scratch("_logs/parse_cigar/{id}_{mei}.log"),
     benchmark:
-        scratch("_benchmarks/parse_cigar/{sample}_{mei}.tsv")
+        scratch("_benchmarks/parse_cigar/{id}_{mei}.tsv")
     container:
         containers("nanopal-binaries")
     input:
         container=containers("nanopal-binaries"),
-        cigar_matches=scratch("gather_matches/{sample}/{mei}/mapped.info.txt"),
+        cigar_matches=scratch("gather_matches/{id}/{mei}/mapped.info.txt"),
     output:
-        cigar_results=scratch("parse_cigar/{sample}/{mei}/cigar_results.all.txt"),
-        cigar_ref=scratch("parse_cigar/{sample}/{mei}/cigar_ref.txt"),
-        mapped_info=scratch("parse_cigar/{sample}/{mei}/mapped.info.final.txt"),
+        cigar_results=scratch("parse_cigar/{id}/{mei}/cigar_results.all.txt"),
+        cigar_ref=scratch("parse_cigar/{id}/{mei}/cigar_ref.txt"),
+        mapped_info=scratch("parse_cigar/{id}/{mei}/mapped.info.final.txt"),
     threads: 1
     shell:
         logged(
@@ -289,18 +293,18 @@ def mei_cut_site(wc):
 
 rule find_on_target:
     log:
-        scratch("_logs/find_on_target/{sample}_{mei}.log"),
+        scratch("_logs/find_on_target/{id}_{mei}.log"),
     benchmark:
-        scratch("_benchmarks/find_on_target/{sample}_{mei}.tsv")
+        scratch("_benchmarks/find_on_target/{id}_{mei}.tsv")
     container:
         containers("blast")
     input:
         container=containers("blast"),
         script="scripts/blast-reads.sh",
-        reads_fasta=scratch("input/{sample}/batch.fasta"),
+        reads_fasta=scratch("input/{id}/batch.fasta"),
         mei_fasta=mei_fasta,
     output:
-        nanopal_reads=scratch("find_on_target/{sample}/{mei}/read.all.txt")
+        nanopal_reads=scratch("find_on_target/{id}/{mei}/read.all.txt")
     params:
         mei_cut_site=mei_cut_site,
     threads: 1
@@ -319,19 +323,19 @@ rule find_on_target:
 rule palmer_on_target:
     localrule: True
     log:
-        scratch("_logs/palmer_on_target/{sample}_{mei}.log"),
+        scratch("_logs/palmer_on_target/{id}_{mei}.log"),
     benchmark:
-        scratch("_benchmarks/palmer_on_target/{sample}_{mei}.tsv")
+        scratch("_benchmarks/palmer_on_target/{id}_{mei}.tsv")
     container:
         containers("palmer")
     input:
         container=containers("palmer"),
         script="scripts/palmer-on-target.sh",
-        palmer_blast=scratch("gather_matches/{sample}/{mei}/blastn_refine.all.txt"),
-        palmer_map=scratch("parse_cigar/{sample}/{mei}/mapped.info.final.txt"),
-        nanopal_reads=scratch("find_on_target/{sample}/{mei}/read.all.txt"),
+        palmer_blast=scratch("gather_matches/{id}/{mei}/blastn_refine.all.txt"),
+        palmer_map=scratch("parse_cigar/{id}/{mei}/mapped.info.final.txt"),
+        nanopal_reads=scratch("find_on_target/{id}/{mei}/read.all.txt"),
     output:
-        scratch("palmer_on_target/{sample}/{mei}/read.all.palmer.final.txt")
+        scratch("palmer_on_target/{id}/{mei}/read.all.palmer.final.txt")
     params:
         mei_cut_site=mei_cut_site,
     threads: 2
@@ -365,20 +369,20 @@ def orig_mei(wc):
 
 rule intersect:
     log:
-        scratch("_logs/intersect/{sample}_{mei}.log"),
+        scratch("_logs/intersect/{id}_{mei}.log"),
     benchmark:
-        scratch("_benchmarks/intersect/{sample}_{mei}.tsv")
+        scratch("_benchmarks/intersect/{id}_{mei}.tsv")
     container:
         containers("nanopal-binaries")
     input:
         script="scripts/intersect.sh",
         container=containers("nanopal-binaries"),
-        palmer_reads=scratch("palmer_on_target/{sample}/{mei}/read.all.palmer.final.txt"),
+        palmer_reads=scratch("palmer_on_target/{id}/{mei}/read.all.palmer.final.txt"),
         ref_mei=ref_mei,
         orig_mei=orig_mei,
     output:
-        out_dir=directory(scratch("intersect/{sample}/{mei}/")),
-        out_summary=scratch("intersect/{sample}/{mei}/summary.final.txt"),
+        out_dir=directory(scratch("intersect/{id}/{mei}/")),
+        out_summary=scratch("intersect/{id}/{mei}/summary.final.txt"),
     threads: 2 # TODO
     resources:
         mem="12GB",
@@ -406,9 +410,9 @@ def pp_mei(wc):
 
 rule intersect_again:
     log:
-        scratch("_logs/intersect_again/{sample}_{mei}.log"),
+        scratch("_logs/intersect_again/{id}_{mei}.log"),
     benchmark:
-        scratch("_benchmarks/intersect_again/{sample}_{mei}.tsv")
+        scratch("_benchmarks/intersect_again/{id}_{mei}.tsv")
     container:
         containers("nanopal-binaries")
     input:
@@ -416,12 +420,12 @@ rule intersect_again:
         container=containers("nanopal-binaries"),
         ref_mei=ref_mei,
         pp_mei=pp_mei,
-        in_summary=scratch("intersect/{sample}/{mei}/summary.final.txt"),
-        valid_read_ids=scratch("find_valid_reads/{sample}/RC.all.list"),
+        in_summary=scratch("intersect/{id}/{mei}/summary.final.txt"),
+        valid_read_ids=scratch("find_valid_reads/{id}/RC.all.list"),
     output:
-        out_dir=directory(scratch("intersect_again/{sample}/{mei}/")),
-        out_summary=scratch("intersect_again/{sample}/{mei}/summary.final.2.txt"),
-        out_result_log=scratch("intersect_again/{sample}/{mei}/result-log.txt"),
+        out_dir=directory(scratch("intersect_again/{id}/{mei}/")),
+        out_summary=scratch("intersect_again/{id}/{mei}/summary.final.2.txt"),
+        out_result_log=scratch("intersect_again/{id}/{mei}/result-log.txt"),
     threads: 2 # TODO
     resources:
         mem="12GB",
@@ -450,21 +454,21 @@ rule _containers:
 rule _input:
     localrule: True
     input:
-        expand(scratch("input/{sample}/batch.fastq"), sample=config["samples"]),
-        expand(scratch("input/{sample}/batch.fasta"), sample=config["samples"]),
+        expand(scratch("input/{id}/batch.fastq"), id=IDS),
+        expand(scratch("input/{id}/batch.fasta"), id=IDS),
 
 rule _alignment:
     localrule: True
     input:
-        expand(scratch("alignment/{sample}/alignment.bam"), sample=config["samples"]),
-        expand(scratch("alignment/{sample}/alignment.bam.bai"), sample=config["samples"]),
+        expand(scratch("alignment/{id}/alignment.bam"), id=IDS),
+        expand(scratch("alignment/{id}/alignment.bam.bai"), id=IDS),
 
 rule _palmer:
     localrule: True
     input:
         expand(
-            scratch("palmer/{sample}/{mei}/{chromosome}/done"),
-            sample=config["samples"],
+            scratch("palmer/{id}/{mei}/{chromosome}/done"),
+            id=IDS,
             mei=config["mobile_elements"],
             chromosome=config["chromosomes"],
         ),
@@ -473,13 +477,13 @@ rule _on_target:
     localrule: True
     input:
         expand(
-            scratch("find_on_target/{sample}/{mei}/read.all.txt"),
-            sample=config["samples"],
+            scratch("find_on_target/{id}/{mei}/read.all.txt"),
+            id=IDS,
             mei=config["mobile_elements"],
         ),
         expand(
-            scratch("palmer_on_target/{sample}/{mei}/read.all.palmer.final.txt"),
-            sample=config["samples"],
+            scratch("palmer_on_target/{id}/{mei}/read.all.palmer.final.txt"),
+            id=IDS,
             mei=config["mobile_elements"],
         ),
 
@@ -487,13 +491,13 @@ rule _intersect:
     localrule: True
     input:
         expand(
-            scratch("intersect/{sample}/{mei}/summary.final.txt"),
-            sample=config["samples"],
+            scratch("intersect/{id}/{mei}/summary.final.txt"),
+            id=IDS,
             mei=config["mobile_elements"],
         ),
         expand(
-            scratch("intersect_again/{sample}/{mei}/summary.final.2.txt"),
-            sample=config["samples"],
+            scratch("intersect_again/{id}/{mei}/summary.final.2.txt"),
+            id=IDS,
             mei=config["mobile_elements"],
         ),
 

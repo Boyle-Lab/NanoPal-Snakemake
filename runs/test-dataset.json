@@ -3,12 +3,11 @@
     "mobile_elements": ["LINE", "AluYa"],
     "reference_version": "GRCh38",
     "reference":      "/scratch/apboyle_root/apboyle0/slosh/nanopal-snakemake-test-runs/ref/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna",
-    "data_path":      "/scratch/apboyle_root/apboyle0/slosh/nanopal-snakemake-test-runs/data",
     "scratch_path":   "/scratch/apboyle_root/apboyle0/slosh/nanopal-snakemake-test-runs/scratch",
     "container_path": "/scratch/apboyle_root/apboyle0/slosh/nanopal-snakemake-test-runs/containers",
-    "samples": [
-        "20230104_1040_MN35288_ANL988_7f2231e2"
-    ],
+    "datasets": {
+        "1": "/scratch/apboyle_root/apboyle0/slosh/nanopal-snakemake-test-runs/data/20230104_1040_MN35288_ANL988_7f2231e2"
+    },
     "chromosomes": [
         "chr1",
         "chr2",
