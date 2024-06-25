@@ -29,7 +29,7 @@ def containers(name):
     return os.path.join(CONTAINER_PATH, f"{name}.sif")
 
 def logged(*shell_commands):
-    commands = "\n".join(shell_commands)
+    commands = "\n".join(('date',) + shell_commands + ('date',))
     return f"time ({commands}) " + ">{log:q} 2>&1"
 
 
@@ -56,7 +56,7 @@ rule input:
     output:
         fastq=scratch("input/{id}/batch.fastq"),
         fasta=scratch("input/{id}/batch.fasta"),
-        basecall_info=scratch("input/{id}/basecall_info.txt"),
+        # basecall_info=scratch("input/{id}/basecall_info.txt"),
     params:
         input_dir_string=lambda wc, input: '\n'.join(input.input_dirs),
     threads: 2
@@ -69,7 +69,7 @@ rule input:
             "  {params.input_dir_string:q}"
             "  {output.fastq}"
             "  {output.fasta}"
-            "  {output.basecall_info}"
+            # "  {output.basecall_info}"
         )
 
 rule index_reference:
@@ -110,47 +110,28 @@ rule alignment:
         fastq=scratch("input/{id}/batch.fastq"),
         index=scratch("reference/index.mmi"),
     output:
-        scratch("alignment/{id}/alignment.sam"),
-    threads: 16
-    resources:
-        mem="32GB",
-        runtime="1h",
-    shell:
-        logged(
-            "minimap2"
-            " -a"
-            " -x map-ont"
-            " -t {threads}"
-            " --secondary=no"
-            " --eqx"
-            " -Y"
-            " {input.index} {input.fastq}"
-            " > {output}"
-        )
-
-rule index_alignment:
-    log:
-        scratch("_logs/index_alignment/{id}.log"),
-    benchmark:
-        scratch("_benchmarks/index_alignment/{id}.tsv")
-    container:
-        containers("samtools")
-    input:
-        container=containers("samtools"),
-        sam=scratch("alignment/{id}/alignment.sam"),
-    output:
         bam=scratch("alignment/{id}/alignment.bam"),
         bai=scratch("alignment/{id}/alignment.bam.bai"),
-    threads: 2  # TODO
+    params:
+        output_dir=scratch("alignment/{id}")
+    threads: 36
     resources:
-        mem="8GB",
-        runtime="30m",
+        mem="128GB",
+        runtime="2h",
     shell:
         logged(
-            r"""
-            samtools sort -o {output.bam} {input.sam} 
-            samtools index {output.bam}
-            """
+            "rm -f {output.bam}",
+            "find {params.output_dir} -name '*.tmp.*' | xargs -r rm",
+            "minimap2"
+            "  -a"
+            "  -x map-ont"
+            "  -t {threads}"
+            "  --secondary=no"
+            "  --eqx"
+            "  -Y"
+            "  {input.index} {input.fastq}"
+            "  | samtools sort -o {output.bam}",
+            "samtools index {output.bam}"
         )
 
 rule find_valid_reads:
@@ -314,7 +295,7 @@ rule find_on_target:
     threads: 1
     resources:
         mem="16GB",
-        runtime="15m",
+        runtime="1h",
     shell:
         logged(
             "./{input.script}"
@@ -390,7 +371,7 @@ rule intersect:
     threads: 2 # TODO
     resources:
         mem="12GB",
-        runtime="10m",
+        runtime="30m",
     shell:
         logged(
             "./{input.script}"
@@ -433,7 +414,7 @@ rule intersect_again:
     threads: 2 # TODO
     resources:
         mem="12GB",
-        runtime="10m",
+        runtime="30m",
     shell:
         logged(
             "./{input.script}"
