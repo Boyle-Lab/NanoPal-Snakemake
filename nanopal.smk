@@ -117,7 +117,7 @@ rule alignment:
     threads: 36
     resources:
         mem="128GB",
-        runtime="2h",
+        runtime="3h",
     shell:
         logged(
             "rm -f {output.bam}",
@@ -184,8 +184,8 @@ rule palmer:
         palmer_mei=palmer_mei_param,
     threads: 2  # TODO
     resources:
-        mem="4GB",
-        runtime="15m",
+        mem="8GB",
+        runtime="1h",
     shell:
         logged(
             "/palmer/PALMER"
