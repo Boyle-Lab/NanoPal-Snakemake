@@ -78,6 +78,13 @@ SIGNAL2=$(awk '($3+$4)!=0 && ($5+$6)!=0' "$out_summary" | wc -l)
 # Checking for no signal
 FAIL=$(awk '($3+$4+$5+$6)==0' "$out_summary" | wc -l)
 
+ENRICHMENT=$(echo | awk -v s1="$SIGNAL1" -v s2="$SIGNAL2" -v fail="$FAIL" '
+    END {
+        total = s1 + s2 + fail
+        print ((s1 + s2) * 100.0) / total
+    }
+')
+
 # non-reference events
 cat "$out_summary" | awk '$11=="NON"' > summary.final.unmap.read.txt
 
@@ -97,19 +104,19 @@ cat "$out_summary" | awk '$11!="NON"' | awk '($3+$4+$5+$6)!=0&&($7+$8+$9+$10)!=0
 cat "$out_summary" | awk '$11!="NON"' | awk '($3+$4+$5+$6)!=0&&($7+$8+$9+$10)==0' > summary.final.ref.L1.read.txt
 
 
-# Getting chr, start, clusteringinfo, validreadbit, 5/3, ± for reads where palmer and nanopal both have signal
+# Getting chr, start, clusteringinfo, validreadbit, 5/3, ±, id for reads where palmer and nanopal both have signal
 cat summary.final.PALMER.read.txt | awk '{
-                                                        # chr, start, clusteringinfo, valid_mapped_read_bit, 5 ±
-    if      (($7+$8)  > 0 && ($9+$10) == 0 && $7>0) {print $11,$12,$14,$18,"5","+"}
-    else if (($7+$8)  > 0 && ($9+$10) == 0 && $8>0) {print $11,$12,$14,$18,"5","-"}
-                                                        # chr, end, clusteringinfo, valid_mapped_read_bit, 3 ±
-    else if (($7+$8) == 0 && ($9+$10)  > 0 && $9>0) {print $11,$13,$15,$18,"3","+"}
-    else if (($7+$8) == 0 && ($9+$10)  > 0 && $10>0) {print $11,$13,$15,$18,"3","-"}
+                                                        # chr, start, clusteringinfo, valid_mapped_read_bit, 5, ±, id
+    if      (($7+$8)  > 0 && ($9+$10) == 0 && $7>0) {print $11,$12,$14,$18,"5","+",$1}
+    else if (($7+$8)  > 0 && ($9+$10) == 0 && $8>0) {print $11,$12,$14,$18,"5","-",$1}
+                                                        # chr, end, clusteringinfo, valid_mapped_read_bit, 3, ±, id
+    else if (($7+$8) == 0 && ($9+$10)  > 0 && $9>0) {print $11,$13,$15,$18,"3","+",$1}
+    else if (($7+$8) == 0 && ($9+$10)  > 0 && $10>0) {print $11,$13,$15,$18,"3","-",$1}
 
-    else if (($7+$8)  > 0 && ($9+$10)  > 0 && $7>0&&$9>0) {print  $11,$12,$14,$18,"5","+""\n"$11,$13,$15,$18,"3","+"}
-    else if (($7+$8)  > 0 && ($9+$10)  > 0 && $7>0&&$10>0) {print $11,$12,$14,$18,"5","+""\n"$11,$13,$15,$18,"3","-"}
-    else if (($7+$8)  > 0 && ($9+$10)  > 0 && $8>0&&$9>0) {print  $11,$12,$14,$18,"5","-""\n"$11,$13,$15,$18,"3","+"}
-    else if (($7+$8)  > 0 && ($9+$10)  > 0 && $8>0&&$10>0) {print $11,$12,$14,$18,"5","-""\n"$11,$13,$15,$18,"3","-"}
+    else if (($7+$8)  > 0 && ($9+$10)  > 0 && $7>0&&$9>0) { print $11,$12,$14,$18,"5","+",$1"\n"$11,$13,$15,$18,"3","+",$1}
+    else if (($7+$8)  > 0 && ($9+$10)  > 0 && $7>0&&$10>0) {print $11,$12,$14,$18,"5","+",$1"\n"$11,$13,$15,$18,"3","-",$1}
+    else if (($7+$8)  > 0 && ($9+$10)  > 0 && $8>0&&$9>0) {print  $11,$12,$14,$18,"5","-",$1"\n"$11,$13,$15,$18,"3","+",$1}
+    else if (($7+$8)  > 0 && ($9+$10)  > 0 && $8>0&&$10>0) {print $11,$12,$14,$18,"5","-",$1"\n"$11,$13,$15,$18,"3","-",$1}
 }' | sort -k 2 -n | sort -k 1 > capture.loci.palmer
 # Note: this appears to be trying to sort by two keys, but since it doesn't pass
 # --stable sort will do a last-resort comparison, so this is actually only
@@ -135,7 +142,7 @@ cat summary.final.ref.L1.read.txt | awk '{
 
 
 cat capture.loci.palmer | awk ' /cluster/ {print $1,$2,$2+1,$3,$4,$5,"Nanopore"}'    > capture.loci.palmer.process
-cat capture.loci.palmer | awk '!/cluster/ {print $1,$2,$2+1,$3,$4,$5,$6,"Nanopore"}' > capture.loci.potential.process
+cat capture.loci.palmer | awk '!/cluster/ {print $1,$2,$2+1,$3,$4,$5,$6,$7}' > capture.loci.potential.process
 
 cat capture.loci.ref capture.loci.ref.add > capture.loci.ref.all
 
@@ -238,9 +245,10 @@ cluster
 cp clustered.txt potential.clustered.txt.fi
 
 {
-    echo There are "${SIGNAL1}" reads caputuring putative L1 signals on one end.
-    echo There are "${SIGNAL2}" reads caputuring putative L1 signals on both ends.
-    echo There are "${FAIL}" reads having no putative L1 signals.
+    echo "There are ${SIGNAL1} reads caputuring putative signals on one end."
+    echo "There are ${SIGNAL2} reads caputuring putative signals on both ends."
+    echo "There are ${FAIL} reads having no putative signals."
+    echo "Enrichment: ${ENRICHMENT}% of reads have signal(s)."
 
     case "$mei" in
         LINE)
@@ -271,7 +279,7 @@ cp clustered.txt potential.clustered.txt.fi
             cat capture.loci.r.AluYnon | grep -c Alu | awk '{print "Other reference Alu reads sum = "$1}'
             cat potential.clustered.txt.fi | awk '{sum+=$4} END {print "Potential specific non-reference AluY reads sum = ", sum}'
             echo "Number of non_Alu reads"
-            cat capture.loci.r.AluYnon | grep -v Alu | awk '{print $1}'
+            cat capture.loci.r.AluYnon | grep -cv Alu | awk '{print $1}'
 
             echo "Number of non-reference AluY and the file (number of supporting reads + coordinate + overlap information)"
             wc -l p.txt.fi

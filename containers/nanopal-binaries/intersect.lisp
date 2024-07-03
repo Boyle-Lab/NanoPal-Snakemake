@@ -17,9 +17,14 @@
     (for line :in-file path :using #'read-line)
     (collect (parse-line line))))
 
-(defstruct (interval (:include interval:interval))
+(defstruct single-read
   chr
+  start
+  end
   tail)
+
+(defstruct (interval (:include interval:interval))
+  (members nil))
 
 (defun print-chunk (chr start end sep tail)
   (princ chr) (princ #\tab)
@@ -33,21 +38,24 @@
         (data2 (parse-file path2))
         (db (make-hash-table :test 'equal)))
     (loop :for (chr start end tail) :in data2
+          :for r = (make-single-read :chr chr :start start :end end :tail tail)
           :for tree = (alexandria:ensure-gethash chr db (interval:make-tree))
-          :do (interval:insert tree (make-interval :start start :end end :chr chr :tail tail)))
+          :for interval = (interval:insert tree (make-interval :start start :end end :members nil))
+          :do (push r (interval-members interval)))
     (loop :for (chr start end tail) :in data1
           :for tree = (alexandria:ensure-gethash chr db (interval:make-tree))
           :for intersects = (interval:find-all tree (cons start end))
           :do (if intersects
                 (dolist (i intersects)
-                  (print-chunk chr start end #\space tail)
-                  (princ #\tab)
-                  (print-chunk (interval-chr i)
-                               (interval-start i)
-                               (interval-end i)
-                               #\tab
-                               (interval-tail i))
-                  (terpri))
+                  (dolist (r (interval-members i))
+                    (print-chunk chr start end #\space tail)
+                    (princ #\tab)
+                    (print-chunk (single-read-chr r)
+                                 (single-read-start r)
+                                 (single-read-end r)
+                                 #\tab
+                                 (single-read-tail r))
+                    (terpri)))
                 (progn (print-chunk chr start end #\space tail)
                        (terpri))))))
 

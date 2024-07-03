@@ -9,12 +9,13 @@ palmer_map="$3" # mapped.info.final.txt
 mei_cut_site="$4"
 
 function full_input() {
-    # Join the PALMER BLAST results with the read lengths.  Output as:
+    # Join the PALMER BLAST results with the Nanopal blast, then join with the
+    # alignment mappings.  Output as:
     #
     #     read_id read_length
     #     nanopal_plus5 nanopal_minus5 nanopal_plus3 nanopal_minus3
     #     qacc evalue qstart qend sstart send
-    #     chromosome start_pos end_pos
+    #     chromosome align_start_pos align_end_pos
     join -1 1 -2 2 \
          -a 1 -a 2 \
          -o auto -e 'null' \

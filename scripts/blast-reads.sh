@@ -2,9 +2,10 @@
 
 set -euo pipefail
 
-mei_fasta="$1"
+mei_db="$1"
 reads_fasta="$2"
 mei_cut_site="$3"
+blast_threads="$4"
 
 function read_lengths {
     # Compute the length of each read in the FASTA, output as:
@@ -40,8 +41,9 @@ function blast_query {
         -evalue 0.001 \
         -task blastn \
         -gapopen 4 \
+        -num_threads "$blast_threads" \
         -query "$reads_fasta" \
-        -subject "$mei_fasta" \
+        -db "$mei_db" \
         -outfmt "6 qacc sacc evalue qstart qend sstart send" \
         | sort -k 1
 }

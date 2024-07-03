@@ -113,7 +113,8 @@ rule alignment:
         bam=scratch("alignment/{id}/alignment.bam"),
         bai=scratch("alignment/{id}/alignment.bam.bai"),
     params:
-        output_dir=scratch("alignment/{id}")
+        output_dir=scratch("alignment/{id}"),
+        samtools_threads=lambda wc, threads: min(16, threads),
     threads: 36
     resources:
         mem="128GB",
@@ -130,8 +131,8 @@ rule alignment:
             "  --eqx"
             "  -Y"
             "  {input.index} {input.fastq}"
-            "  | samtools sort -o {output.bam}",
-            "samtools index {output.bam}"
+            "  | samtools sort -o {output.bam} -@ {params.samtools_threads}",
+            "samtools index {output.bam} -@ {params.samtools_threads}"
         )
 
 rule find_valid_reads:
@@ -185,7 +186,7 @@ rule palmer:
     threads: 2  # TODO
     resources:
         mem="8GB",
-        runtime="1h",
+        runtime="4h",
     shell:
         logged(
             "/palmer/PALMER"
@@ -267,6 +268,29 @@ def mei_fasta(wc):
         'SVA_F': "meis/SVA_F",
     }[wc.mei]
 
+rule mei_db:
+    localrule: True
+    log:
+        scratch("_logs/mei_db/{mei}.log")
+    container:
+        containers("blast")
+    input:
+        container=containers("nanopal-binaries"),
+        mei_fasta=mei_fasta,
+    output:
+        mei_db=multiext(scratch("mei_db/{mei}/{mei}"), ".ndb", ".nhr", ".nin", ".njs", ".not", ".nsq", ".ntf", ".nto"),
+        mei_marker=touch(scratch("mei_db/{mei}/{mei}")),
+    params:
+        output_prefix=scratch("mei_db/{mei}/{mei}")
+    threads: 1
+    shell:
+        logged(
+            "makeblastdb"
+            "  -in {input.mei_fasta}"
+            "  -dbtype nucl"
+            "  -out {params.output_prefix}"
+        )
+
 def mei_cut_site(wc):
     return {
         'LINE':  5900,
@@ -286,22 +310,24 @@ rule find_on_target:
     input:
         container=containers("blast"),
         script="scripts/blast-reads.sh",
+        mei_db=scratch("mei_db/{mei}/{mei}"),
         reads_fasta=scratch("input/{id}/batch.fasta"),
-        mei_fasta=mei_fasta,
     output:
         nanopal_reads=scratch("find_on_target/{id}/{mei}/read.all.txt")
     params:
         mei_cut_site=mei_cut_site,
-    threads: 1
+        blast_threads=lambda wc, threads: max(threads-2, 1),
+    threads: 10
     resources:
-        mem="16GB",
+        mem="24GB",
         runtime="1h",
     shell:
         logged(
             "./{input.script}"
-            "  {input.mei_fasta}"
+            "  {input.mei_db}"
             "  {input.reads_fasta}"
             "  {params.mei_cut_site}"
+            "  {params.blast_threads}"
             "  > {output}"
         )
 
@@ -456,6 +482,14 @@ rule _palmer:
             id=IDS,
             mei=config["mobile_elements"],
             chromosome=config["chromosomes"],
+        ),
+
+rule _mei_db:
+    localrule: True
+    input:
+        expand(
+            scratch("mei_db/{mei}/{mei}"),
+            mei=config["mobile_elements"]
         ),
 
 rule _on_target:

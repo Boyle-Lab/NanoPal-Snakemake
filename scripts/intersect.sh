@@ -14,17 +14,31 @@ out_summary="$6" # summary.final.txt
 mkdir -p "$out_dir"
 cd "$out_dir"
 
+# We start with the results from Palmer and Nanopal's own BLAST queries:
+#
+# palmer_reads:
+#                            1           2            3        4         5        6         7        8         9        10        11     12         13
+#                            read_name   read_length  n_plus5  n_minus5  n_plus3  n_minus3  p_plus5  p_minus5  p_plus3  p_minus3  chr    start_pos  end_pos
+# f5edeb8c-f225-4b47-b7ee-1c0df4dea038   172594       0        1         0        0         0        0         0        0         chr18  74826199   74999245
+
+# Extract the 5' position of any (non-reference?  unmapped? what is that grep?) reads
+# chr start start+1 read_id
 awk '{print $11, $12, $12+1, $1}' "$palmer_reads"  | grep -v "NON" > read.5.Q.txt
+
+# Extract the 3' position of any NON-reference reads
+# chr end   end+1   read_id
 awk '{print $11, $13, $13+1, $1}' "$palmer_reads"  | grep -v "NON" > read.3.Q.txt
 
 cp read.5.Q.txt Q.txt
 
-#######MEI
+# ref_mei:
+# chr     start           end             type    ?       strand  ?       ?
+# chr1    100000000       100000637       L1M2    ref     -       6514    7153
 cp "${ref_mei}"  S.txt
-# inter
+
 intersect Q.txt S.txt > inter.txt
 awk '{if($8=="") print $1,$2,$3,$4,"NON"; else print $1,$2,$3,$4,$8}' inter.txt > input_rm_cluster.txt
-# RM_collapse
+
 collapse input_rm_cluster.txt > output_rm_cluster.txt
 mv output_rm_cluster.txt read.5.Q.ref.txt
 
@@ -107,3 +121,4 @@ join -1 1 -2 1 \
      <(cat "$palmer_reads" | sort) \
      <(cat read.RM.txt | sort) \
      > "$out_summary"
+
