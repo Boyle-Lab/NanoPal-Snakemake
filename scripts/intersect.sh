@@ -7,8 +7,8 @@ palmer_reads="$1" # read.all.palmer.final.txt
 ref_mei=$(readlink -f "$2") # hg38.RM.L1.ref
 orig_mei=$(readlink -f "$3") # PALMER.NA12878.L1.txt
 
-out_dir="$5"
-out_summary="$6" # summary.final.txt
+out_dir="$4"
+out_summary="$5" # summary.final.txt
 
 mkdir -p "$out_dir"
 cd "$out_dir"
