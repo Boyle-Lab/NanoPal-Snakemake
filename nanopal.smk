@@ -404,7 +404,6 @@ rule intersect:
             "  {input.palmer_reads}"
             "  {input.ref_mei}"
             "  {input.orig_mei}"
-            "  {wildcards.mei}"
             "  {output.out_dir}"
             "  {output.out_summary}"
         )
