@@ -135,26 +135,26 @@ rule alignment:
             "samtools index {output.bam} -@ {params.samtools_threads}"
         )
 
-rule find_valid_reads:
+rule find_revcomp_reads:
     localrule: True
     log:
-        scratch("_logs/find_valid_reads/{id}.log"),
+        scratch("_logs/find_revcomp_reads/{id}.log"),
     benchmark:
-        scratch("_benchmarks/find_valid_reads/{id}.tsv")
+        scratch("_benchmarks/find_revcomp_reads/{id}.tsv")
     container:
         containers("samtools")
     input:
         container=containers("samtools"),
         bam=scratch("alignment/{id}/alignment.bam"),
     output:
-        valid_read_ids=scratch("find_valid_reads/{id}/RC.all.list"),
+        revcomp_read_ids=scratch("find_revcomp_reads/{id}/RC.all.list"),
     threads: 2
     shell:
         logged(
             "samtools view {input.bam}"
             "    -q 10 -F 0x100 -F 0x200 -F 0x800 -F 0x400 -f 0x10"
             " | awk '{{print $1}}'"
-            " > {output.valid_read_ids}"
+            " > {output.revcomp_read_ids}"
         )
 
 def palmer_mei_param(wc):
@@ -431,7 +431,7 @@ rule intersect_again:
         ref_mei=ref_mei,
         pp_mei=pp_mei,
         in_summary=scratch("intersect/{id}/{mei}/summary.final.txt"),
-        valid_read_ids=scratch("find_valid_reads/{id}/RC.all.list"),
+        revcomp_read_ids=scratch("find_revcomp_reads/{id}/RC.all.list"),
     output:
         out_dir=directory(scratch("intersect_again/{id}/{mei}/")),
         out_summary=scratch("intersect_again/{id}/{mei}/summary.final.2.txt"),
@@ -446,7 +446,7 @@ rule intersect_again:
             "  {input.ref_mei}"
             "  {input.pp_mei}"
             "  {input.in_summary}"
-            "  {input.valid_read_ids}"
+            "  {input.revcomp_read_ids}"
             "  {wildcards.mei}"
             "  {output.out_dir}"
             "  {output.out_summary}"

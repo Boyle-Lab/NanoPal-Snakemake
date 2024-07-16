@@ -6,7 +6,7 @@ set -x
 ref_mei=$(readlink -f "$1") # hg38.RM.L1.ref
 pp_mei=$(readlink -f "$2") # L1.inter.fi
 in_summary="$3" # summary.final.txt
-valid_read_ids="$4" # RC.all.list
+revcomp_read_ids="$4" # RC.all.list
 mei="$5" # LINE
 
 out_dir="$6"
@@ -58,13 +58,13 @@ case "$mei" in
 esac
 
 # Tack on an extra column to the end of the summary file, with 1 if the read ID
-# is in the list of valid mapped reads, 0 if it's not.
+# is in the list of reverse complemented reads, 0 if it's not.
 join -1 1 -2 1 \
      -a 1 \
      -o auto -e "0" \
      --check-order \
      <(sort -k1 "$in_summary") \
-     <(sort -k1 "$valid_read_ids" | sed -e 's/$/ 1/') \
+     <(sort -k1 "$revcomp_read_ids" | sed -e 's/$/ 1/') \
      > "$out_summary"
 
 # TODO Refactor the rest of this into separate chunks.
@@ -85,64 +85,88 @@ ENRICHMENT=$(echo | awk -v s1="$SIGNAL1" -v s2="$SIGNAL2" -v fail="$FAIL" '
     }
 ')
 
-# non-reference events
+# The summary file now looks like this:                                                                (of the ALIGNMENT)
+#                                                 nanopal --- palmer ----                              P&P ----  Ref ---------
+#     read id ----------------------------        5+ 5- 3+ 3- 5+ 5- 3+ 3- position ------------------  5'   3'   5'     3'      RevComp
+#     0000090b-e5db-457a-ac96-f111a076a4c8  1177  1  0  0  0  0  0  0  0  chr6   124810530  124811705  NON  NON  L1PA3  L1MA10  1
+#     00000b31-b008-4cc5-b475-0e9f34753c63  9610  0  1  0  0  0  0  0  0  chr7   24100312   24109938   NON  NON  L1PA3  NON     1
+#     0000146a-ced5-4e84-809b-862bb1aa087e  1885  0  0  0  0  0  0  0  0  NON    0          0          NA   NA   NA     NA      1
+#     00001f2f-420b-4f1c-86e6-c9e6115968fa  484   0  0  0  0  0  0  0  0  chr11  2132414    2132857    NON  NON  NON    NON     0
+#
+#     col 1                                 2     3  4  5  6  7  8  9 10  11     12         13         14   15   16     17      18
+#
+# Note that the values of the P&P and Ref columns are both marking "an
+# already-known event is here", but the formatting will look different.
+#
+# The Ref columns will have values of the type of event (e.g. L1HS), optionally
+# clustered if there's more than one close by (e.g. L1HS/L1PA3).
+#
+# The P&P columns will only have a single value, and it'll be the long Palmer ID
+# format like: 22.20.0.427778.0/1.12.12.0.0.31.0.0.cluster0_chr15_27930643_27930658_27930645_27930658_NA12878
+
+# unmapped reads
 cat "$out_summary" | awk '$11=="NON"' > summary.final.unmap.read.txt
 
-# reference event, nanopal got no signal, palmer did get signal
+# mapped read, nanopal got no signal, palmer did get signal
 cat "$out_summary" | awk '$11!="NON"' | awk '($3+$4+$5+$6)==0&&($7+$8+$9+$10)!=0' > summary.final.odd.read.txt
 
-# reference event, nanopal got no signal, palmer got no signal
+# mapped read, nanopal got no signal, palmer got no signal
 cat "$out_summary" | awk '$11!="NON"' | awk '($3+$4+$5+$6+$7+$8+$9+$10)==0' > summary.final.no.L1.read.txt
 
-# reference event, nanopal got signal
+# mapped read, nanopal got signal
 cat "$out_summary" | awk '$11!="NON"' | awk '($3+$4+$5+$6)!=0' > summary.final.all.L1.read.txt
 
-# Both palmer and nanopal have signal
+# mapped read, both palmer and nanopal have signal
 cat "$out_summary" | awk '$11!="NON"' | awk '($3+$4+$5+$6)!=0&&($7+$8+$9+$10)!=0' > summary.final.PALMER.read.txt
 
-# only nanopal has signal
+# mapped read, only nanopal has signal
 cat "$out_summary" | awk '$11!="NON"' | awk '($3+$4+$5+$6)!=0&&($7+$8+$9+$10)==0' > summary.final.ref.L1.read.txt
 
-
-# Getting chr, start, clusteringinfo, validreadbit, 5/3, ±, id for reads where palmer and nanopal both have signal
+# Start with the set of reads where both Nanopal and Palmer have signal (from above), and extract out
+# chr, start, already-palmer-known-event, revcomp, 5/3, ±, and id.
+#
+# TODO Do we need to check `revcomp` here as well, like in the next two `awk` calls?  If not, why not?
 cat summary.final.PALMER.read.txt | awk '{
-                                                        # chr, start, clusteringinfo, valid_mapped_read_bit, 5, ±, id
-    if      (($7+$8)  > 0 && ($9+$10) == 0 && $7>0) {print $11,$12,$14,$18,"5","+",$1}
-    else if (($7+$8)  > 0 && ($9+$10) == 0 && $8>0) {print $11,$12,$14,$18,"5","-",$1}
-                                                        # chr, end, clusteringinfo, valid_mapped_read_bit, 3, ±, id
-    else if (($7+$8) == 0 && ($9+$10)  > 0 && $9>0) {print $11,$13,$15,$18,"3","+",$1}
-    else if (($7+$8) == 0 && ($9+$10)  > 0 && $10>0) {print $11,$13,$15,$18,"3","-",$1}
+    #       palmer 5         palmer 3
+    if      (($7+$8)  > 0 && ($9+$10) == 0 &&  $7 > 0) {print $11,$12,$14,$18,"5","+",$1} # chr, start, clusteringinfo, revcomp, 5, ±, id
+    else if (($7+$8)  > 0 && ($9+$10) == 0 &&  $8 > 0) {print $11,$12,$14,$18,"5","-",$1}
+    else if (($7+$8) == 0 && ($9+$10)  > 0 &&  $9 > 0) {print $11,$13,$15,$18,"3","+",$1} # chr, end,   clusteringinfo, revcomp, 3, ±, id
+    else if (($7+$8) == 0 && ($9+$10)  > 0 && $10 > 0) {print $11,$13,$15,$18,"3","-",$1}
 
-    else if (($7+$8)  > 0 && ($9+$10)  > 0 && $7>0&&$9>0) { print $11,$12,$14,$18,"5","+",$1"\n"$11,$13,$15,$18,"3","+",$1}
-    else if (($7+$8)  > 0 && ($9+$10)  > 0 && $7>0&&$10>0) {print $11,$12,$14,$18,"5","+",$1"\n"$11,$13,$15,$18,"3","-",$1}
-    else if (($7+$8)  > 0 && ($9+$10)  > 0 && $8>0&&$9>0) {print  $11,$12,$14,$18,"5","-",$1"\n"$11,$13,$15,$18,"3","+",$1}
-    else if (($7+$8)  > 0 && ($9+$10)  > 0 && $8>0&&$10>0) {print $11,$12,$14,$18,"5","-",$1"\n"$11,$13,$15,$18,"3","-",$1}
+    else if (($7+$8)  > 0 && ($9+$10)  > 0 && $7 > 0 &&  $9 > 0) {print $11,$12,$14,$18,"5","+",$1"\n"$11,$13,$15,$18,"3","+",$1}
+    else if (($7+$8)  > 0 && ($9+$10)  > 0 && $7 > 0 && $10 > 0) {print $11,$12,$14,$18,"5","+",$1"\n"$11,$13,$15,$18,"3","-",$1}
+    else if (($7+$8)  > 0 && ($9+$10)  > 0 && $8 > 0 &&  $9 > 0) {print $11,$12,$14,$18,"5","-",$1"\n"$11,$13,$15,$18,"3","+",$1}
+    else if (($7+$8)  > 0 && ($9+$10)  > 0 && $8 > 0 && $10 > 0) {print $11,$12,$14,$18,"5","-",$1"\n"$11,$13,$15,$18,"3","-",$1}
 }' | sort -k 2 -n | sort -k 1 > capture.loci.palmer
 # Note: this appears to be trying to sort by two keys, but since it doesn't pass
 # --stable sort will do a last-resort comparison, so this is actually only
 # sorted by field 1 to end of line (but NOT numeric for field 2).  The proper
-# way to do what I think this is tryign to do is: sort -k 1,1 -k 2,2n
+# way to do what I think this is trying to do is: sort -k 1,1 -k 2,2n
 
-# Getting chr, start, clusteringinfo, validreadbit, 5/3, for a mix of palmer/nanopal signals
+# Getting chr, start, clusteringinfo, revcomp, 5/3, for a mix of palmer/nanopal signals
 cat summary.final.PALMER.read.txt | awk '{
-    if      (($7+$8)>0&&($9+$10)==0&&$18==0&&($5+$6)>0) {print $11,$13,$17,$18,"3"}
-    else if (($7+$8)>0&&($9+$10)==0&&$18==1&&($3+$4)>0) {print $11,$13,$17,$18,"3"}
-    else if (($7+$8)==0&&($9+$10)>0&&$18==0&&($3+$4)>0) {print $11,$12,$16,$18,"5"}
-    else if (($7+$8)==0&&($9+$10)>0&&$18==1&&($5+$6)>0) {print $11,$12,$16,$18,"5"}
+    #       palmer 5         palmer 3         revcomp       nano 3/5
+    if      (($7+$8)  > 0 && ($9+$10) == 0 && $18 == 0 && ($5+$6) > 0) {print $11,$13,$17,$18,"3"} # palmer 5  true, palmer 3 false, revcomp false, nano 3 true
+    else if (($7+$8)  > 0 && ($9+$10) == 0 && $18 == 1 && ($3+$4) > 0) {print $11,$13,$17,$18,"3"} # palmer 5  true, palmer 3 false, revcomp  true, nano 5 true
+    else if (($7+$8) == 0 && ($9+$10)  > 0 && $18 == 0 && ($3+$4) > 0) {print $11,$12,$16,$18,"5"} # palmer 5 false, palmer 3  true, revcomp false, nano 5 true
+    else if (($7+$8) == 0 && ($9+$10)  > 0 && $18 == 1 && ($5+$6) > 0) {print $11,$12,$16,$18,"5"} # palmer 5 false, palmer 3  true, revcomp  true, nano 3 true
 }' | sort -k 2 -n | sort -k 1 > capture.loci.ref.add
 
 # Getting ... for when only nanopal has signal
 cat summary.final.ref.L1.read.txt | awk '{
-    if      (($3+$4)  > 0 && ($5+$6) == 0 && $18 == 0) {print $11,$12,$16,$18,"5"}
-    else if (($3+$4)  > 0 && ($5+$6) == 0 && $18 == 1) {print $11,$13,$17,$18,"3"}
-    else if (($3+$4) == 0 && ($5+$6)  > 0 && $18 == 0) {print $11,$13,$17,$18,"3"}
-    else if (($3+$4) == 0 && ($5+$6)  > 0 && $18 == 1) {print $11,$12,$16,$18,"5"}
-    else if (($3+$4)  > 0 && ($5+$6)  > 0) {print $11,$12,$16,$18,"5""\n"$11,$13,$17,$18,"3"}
+    #        nano 5           nano 3          revcomp
+    if      (($3+$4)  > 0 && ($5+$6) == 0 && $18 == 0) {print $11,$12,$16,$18,"5"} # nano 5  true, nano 3 false, revcomp false
+    else if (($3+$4)  > 0 && ($5+$6) == 0 && $18 == 1) {print $11,$13,$17,$18,"3"} # nano 5  true, nano 3 false, revcomp  true
+
+    else if (($3+$4) == 0 && ($5+$6)  > 0 && $18 == 0) {print $11,$13,$17,$18,"3"} # nano 5 false, nano 3  true, revcomp false
+    else if (($3+$4) == 0 && ($5+$6)  > 0 && $18 == 1) {print $11,$12,$16,$18,"5"} # nano 5 false, nano 3  true, revcomp  true
+
+    else if (($3+$4)  > 0 && ($5+$6)  > 0            ) {print $11,$12,$16,$18,"5""\n"$11,$13,$17,$18,"3"} # nano 5 true, nano 3 true, revcomp whatever
 }' | sort -k 2 -n | sort -k 1 > capture.loci.ref
 
 
-cat capture.loci.palmer | awk ' /cluster/ {print $1,$2,$2+1,$3,$4,$5,"Nanopore"}'    > capture.loci.palmer.process
-cat capture.loci.palmer | awk '!/cluster/ {print $1,$2,$2+1,$3,$4,$5,$6,$7}' > capture.loci.potential.process
+cat capture.loci.palmer | awk ' /cluster/ {print $1,$2,$2+1,$3,$4,$5,"Nanopore"}' > capture.loci.palmer.process
+cat capture.loci.palmer | awk '!/cluster/ {print $1,$2,$2+1,$3,$4,$5,$6,$7}'      > capture.loci.potential.process
 
 cat capture.loci.ref capture.loci.ref.add > capture.loci.ref.all
 
@@ -171,17 +195,8 @@ case "$mei" in
         ;;
 esac
 
-#######MEI
-cp "${pp_mei}" Q.txt
-cp capture.loci.palmer.process S.txt
-# inter
-intersect Q.txt S.txt > inter.txt
-mv inter.txt inter.palmer.txt
-
-cp capture.loci.potential.process S.txt
-# inter
-intersect Q.txt S.txt > inter.txt
-mv inter.txt inter.palmer.add.txt
+intersect "${pp_mei}" capture.loci.palmer.process    > inter.palmer.txt
+intersect "${pp_mei}" capture.loci.potential.process > inter.palmer.add.txt
 
 case "$mei" in
     LINE)
@@ -268,7 +283,7 @@ cp clustered.txt potential.clustered.txt.fi
             wc -l r.l1pa.txt.fi
             echo "Number of other reference L1 and the file (number of supporting reads + coordinate)"
             wc -l r.l1.txt.fi
-            echo "Number of potential specific non-reference L1Hs and the file (coordinate + number of supporting reads + number of left supporting reads + number of right supporting reads + strand)"
+            echo "Number of potential Nanopore-specific non-reference L1Hs and the file (coordinate + number of supporting reads + number of left supporting reads + number of right supporting reads + strand)"
             wc -l potential.clustered.txt.fi
             ;;
         AluYa | AluYb)

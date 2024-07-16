@@ -71,9 +71,9 @@ awk \
         # multiple BLAST results).
         qacc      = $7
         evalue    = $8
-        qstart    = $9
+        qstart    = $9     # q =   query = line consensus sequence
         qend      = $10
-        sstart    = $11
+        sstart    = $11    # s = subject = read
         send      = $12
 
         # These should also all be the same for all the rows.

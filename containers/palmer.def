@@ -4,6 +4,7 @@ From: staphb/samtools:1.10
 %files
     ./ncbi-blast-2.12.0+-x64-linux.tar.gz /ncbi-blast-2.12.0+-x64-linux.tar.gz
     ./palmer.zip /palmer.zip
+    ./palmer.diff /palmer.diff
 
 %post
     export PALMER_VER="a9bcc1b4d971c447931cb00ac1d69804421ec424"
@@ -17,6 +18,7 @@ From: staphb/samtools:1.10
     unzip palmer.zip
     mv PALMER-* palmer
     cd palmer
+    patch -p1 < /palmer.diff
     make
     cd ..
     apt-get purge -y --auto-remove unzip wget build-essential
