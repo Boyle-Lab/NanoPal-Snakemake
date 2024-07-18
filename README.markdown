@@ -147,6 +147,14 @@ worker node.  The `run.sbat` file does that, so copy and edit that to point at
 your run config and use `sbatch my-run.sbat` to kick off the Snakemake
 controller, which will then fan out the tasks to other nodes.
 
+You can monitor the progress by watching the log file with:
+
+    tail -f snakemake-batch-run-<controller job id>.out
+
+and/or by watching the Snakemake tasks in the queue with something like:
+
+    squeue --me --format="%.10i %60j %.6u %.12a %.10P %.2t %.10M %.10L %.6C %.10m %R"
+
 ## Output
 
 The pipeline will put all of its output into subdirectories of `<scratch_path>/<batch_id>`:
