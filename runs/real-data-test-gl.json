@@ -1,12 +1,12 @@
 {
-    "batch_id": "real-data-test-02",
+    "batch_id": "mei-spot-check",
     "mobile_elements": ["LINE", "AluYa", "AluYb"],
     "reference_version": "GRCh38",
     "reference":      "/scratch/apboyle_root/apboyle0/slosh/nanopal-snakemake-test-runs/ref/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna",
     "scratch_path":   "/scratch/apboyle_root/apboyle0/slosh/nanopal-snakemake-test-runs/scratch",
     "container_path": "/scratch/apboyle_root/apboyle0/slosh/nanopal-snakemake-test-runs/containers",
     "datasets": {
-        "1": "/nfs/turbo/boylelab/nanopore_data/MEI/AD/20230202_1513_MN35288_FAS89555_2289ca4f"
+        "20230202_1513_MN35288_FAS89555_2289ca4f": "/nfs/turbo/boylelab/nanopore_data/MEI/AD/20230202_1513_MN35288_FAS89555_2289ca4f"
     },
     "chromosomes": [
         "chr1",

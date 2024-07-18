@@ -45,7 +45,10 @@ rule container:
         "singularity pull {output} {params.source}"
 
 def dataset_input_dirs(wc):
-    return [directory(d) for d in config["datasets"][wc.id]]
+    dirs = config["datasets"][wc.id]
+    if isinstance(dirs, str):
+        dirs = [dirs]
+    return [directory(d) for d in dirs]
 
 rule input:
     log:

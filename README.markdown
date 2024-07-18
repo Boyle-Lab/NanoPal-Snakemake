@@ -36,16 +36,22 @@ A single run config here looks something like this:
 
 ```json
 {
-    "batch_id": "real-data-test-02",
+    "batch_id": "hapmap-01",
     "mobile_elements": ["LINE", "AluYa", "AluYb"],
     "reference_version": "GRCh38",
     "reference":      "/scratch/apboyle_root/apboyle0/slosh/nanopal-snakemake-test-runs/ref/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna",
-    "data_path":      "/nfs/turbo/boylelab/nanopore_data/MEI/AD",
     "scratch_path":   "/scratch/apboyle_root/apboyle0/slosh/nanopal-snakemake-test-runs/scratch",
     "container_path": "/scratch/apboyle_root/apboyle0/slosh/nanopal-snakemake-test-runs/containers",
-    "samples": [
-        "20230202_1513_MN35288_FAS89555_2289ca4f"
-    ],
+    "datasets": {
+        "minion":     "/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240523_1455_MN40776_FAY82215_1b3c041f",
+        "p2-acq1":    ["/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240606_1417_P2S-01935-B_PAW86158_158598d3"],
+        "p2-acq2":    ["/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240529_1010_P2S-01935-A_PAK58332_285f9616",
+                       "/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240529_1356_P2S-01935-A_PAK58332_17eb569e"],
+        "everything": ["/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240606_1417_P2S-01935-B_PAW86158_158598d3",
+                       "/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240529_1010_P2S-01935-A_PAK58332_285f9616",
+                       "/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240529_1356_P2S-01935-A_PAK58332_17eb569e",
+                       "/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240523_1455_MN40776_FAY82215_1b3c041f"]
+    },
     "chromosomes": [
         "chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9",
         "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17",
@@ -54,17 +60,35 @@ A single run config here looks something like this:
 }
 ```
 
-`batch_id` is a name for the run.  The pipeline will store all its output under
-a directory with this name in the `scratch_path` directory.
-
-`data_path` is the path that contains the directories of your samples.  Each of
-`samples` should be a directory inside that data path, which contains
-a `basecalled_output.tar` file.  Note that some of our older sequencing runs
-have a slightly different format here — see the TODO in
-`scripts/retrieve-input.sh` for more context.
+`batch_id` is a name for the run (TODO we should probably rename this to
+`run_id`).  The pipeline will store all its output under a directory with this
+name in the `scratch_path` directory.
 
 `container_path` is the path to a directory to store the Singularity containers
 (see below).
+
+`datasets` describes the location of the dataset(s) you want to run the pipeline
+on.
+
+Each entry in the `datasets` dictionary should have a unique ID as the key and
+a list of directories as the value.  The data from all the directories in the
+list will be combined and used as input to the pipeline, which can be handy if
+e.g.:
+
+* You have multiple separate ONT data directories for the same sample because
+  you had to pause and restart the sequencer (the `p2-acq2` dataset in the
+  example).
+* You want to combine multiple sequencing runs into one big pool and run the
+  pipeline on all the data together (the `everything` dataset in the example).
+
+If you only have one directory for an entry you can optionally use a single
+string for the value for convenience, instead of having to wrap it up as
+a single-element list (the `minion` dataset in the example).
+
+Each of the directories you specify must have a `basecalled_output.tar` file in
+it, which is where the pipeline will pull the data from.  Note that some of our
+older sequencing runs have a slightly different format here — see the TODO in
+`scripts/retrieve-input.sh` for more context.
 
 ## Containers
 
