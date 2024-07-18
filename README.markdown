@@ -6,8 +6,15 @@ from multiple bash scripts into a single Snakemake-orchestrated pipeline.
 ## Dependencies
 
 To run, you'll need Snakemake and Singularity installed on the workstation or
-cluster you want to use.  For Great Lakes you should be able to do `module load
-snakemake singularity` and you should be all set.
+cluster you want to use.
+
+For Great Lakes you should be able to do `module load snakemake singularity` and
+be all set.
+
+For workstations, you'll need one with Singularity installed (`clover`
+definitely has it, not sure about the others).  Then you'll need to install
+Snakemake.  You could do this through Conda, or with a boring old virtualenv if
+you prefer.
 
 ## Configuration
 
@@ -16,7 +23,7 @@ There are three layers of configuration.
 `config/base.json` contains basic configuration for the pipeline itself, e.g.
 which versions of the various tools to use.  There are also `config/local.json` and
 `config/glakes.json` that let you change those values for locally running or
-running on Great Lakes, but you probably won't need to do that (we should
+running on Great Lakes, but you likely won't need to do that (we should
 probably just remove them entirely).
 
 `profiles/glakes/config.yaml` contains the necessary configuration for using
@@ -24,8 +31,8 @@ Slurm on Great Lakes to parallelize the pipeline.  You might need to edit this
 if you want to e.g. change which Slurm account the pipeline runs its tasks
 under.
 
-`samples/*.json` is where you'll configure an individual run of a pipeline.
-A single sample config here looks something like this:
+`runs/*.json` is where you'll configure an individual run of a pipeline.
+A single run config here looks something like this:
 
 ```json
 {
@@ -61,10 +68,10 @@ have a slightly different format here — see the TODO in
 
 ## Containers
 
-The pipeline will download its own containers here, except for those that we
-need to build ourselves.  For those you'll need to build them yourself (or find
-someone who's got them built) and copy them over manually before you run for the
-first time.
+The pipeline will download its own containers to the directory specified in
+`container_path`, *except* for the custom containers that we need to build
+ourselves.  For those you'll need to build them yourself (or find someone who's
+got them built) and copy them over manually before you run for the first time.
 
 Unfortunately you can't build Singularity containers on Great Lakes, so you'll
 need to have Singularity installed on a machine you have `root` access to (or
@@ -81,9 +88,9 @@ if you get an error here.
 
 ## Running
 
-Once you've got your `samples/whatever.json` and the manually-built containers
+Once you've got your `runs/whatever.json` and the manually-built containers
 ready, you should be all set to run.  There are a couple of helper scripts that
-will make it a little less tedious to invoke Snakemake.
+will make it a little less tedious to invoke Snakemake:
 
 * `run-local.sh` for running directly on a workstation.
 * `run-glakes.sh` for running on Great Lakes via Slurm.
@@ -92,10 +99,16 @@ Take a look at the individual scripts to see exactly what they're doing, but
 here are some examples to get you started.  To do a dry run and just print what
 Snakemake thinks it needs to do:
 
-    script          samplesheet                       snakemake args
-    vvvvvv          vvvvvvvvvvv                       vvvvvvvvvvvvvv
-    ./run-glakes.sh samples/real-data-test-gl.json    _all --dry-run
-    ./run-local.sh  samples/real-data-test-local.json _all --dry-run
+    script          run config                        snakemake args
+    vvvvvv          vvvvvvvvvv                        vvvvvvvvvvvvvv
+    ./run-glakes.sh samples/real-data-test-gl.json    _all --cores=36 --dry-run
+    ./run-local.sh  samples/real-data-test-local.json _all --cores=12 --dry-run
+
+Unfortunately you *do* need to pass `--cores` even for a dry run.  The reason is
+that some of the commands that get invoked depend in a non-trivial way on the
+number of cores used, which means Snakemake will consider them changed if the
+number of cores changes (and the default `--cores` is `1`), which will make the
+dry run look like it'll have to do more work that the real run actually will.
 
 To do a full run for real on a workstation (e.g. `clover`):
 
@@ -106,9 +119,9 @@ doesn't get killed if your wifi dies.
 
 When running on the cluster you're not supposed to do any real work on the login
 nodes, so you should use Slurm to invoke the `./run-glakes.sh` call on a Slurm
-worker node.  The `run.sbat` file does that, so copy and edit that to your
-liking and use `sbatch my-run.sbat` to kick off the Snakemake controller, which
-will then fan out the tasks to other nodes.
+worker node.  The `run.sbat` file does that, so copy and edit that to point at
+your run config and use `sbatch my-run.sbat` to kick off the Snakemake
+controller, which will then fan out the tasks to other nodes.
 
 ## Output
 
@@ -168,3 +181,7 @@ The final output numbers (which were just dumped to stdout in the vanilla
 version) will be under `intersect_again/result-log.txt` (TODO we should add
 another Snakemake step to collect all the end results into a single place for
 easier viewing/downloading).
+
+TODO Note, at some point we might invert the structure of the directories so
+instead of `<step>/<sample>/<target>` it's structured
+`<sample>/<step>/<target>`, but that's still yet to be decided.
