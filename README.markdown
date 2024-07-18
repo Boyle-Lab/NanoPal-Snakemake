@@ -209,10 +209,10 @@ parse_cigar/
         └── [  18M]  mapped.info.final.txt
 ```
 
-The final output numbers (which were just dumped to stdout in the vanilla
-version) will be under `intersect_again/result-log.txt` (TODO we should add
-another Snakemake step to collect all the end results into a single place for
-easier viewing/downloading).
+The final output numbers (which were just dumped to standard output in the
+vanilla version of Nanopal) will be under `intersect_again/result-log.txt` (TODO
+we should add another Snakemake step to collect all the end results into
+a single place for easier viewing/downloading).
 
 TODO Note, at some point we might invert the structure of the directories so
 instead of `<step>/<sample>/<target>` it's structured
