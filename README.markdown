@@ -157,6 +157,32 @@ and/or by watching the Snakemake tasks in the queue with something like:
 
 ## Output
 
+**TODO the following is outdated, need to update to describe the new output structure, which is something like:**
+
+    scratch-path/
+        _logs/
+        _benchmarks/
+        dataset_id1/
+            toplevel_step1/
+                …output files…
+            toplevel_step2/
+                …output files…
+            LINE/
+                target_level_step1/
+                    …output files…
+                target_level_step2/
+                    …output files…
+            AluYa/
+                target_level_step1/
+                    …output files…
+                target_level_step2/
+                    …output files…
+            …
+        dataset_id2/
+            …
+
+**Old notes:**
+
 The pipeline will put all of its output into subdirectories of `<scratch_path>/<batch_id>`:
 
 ```

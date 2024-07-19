@@ -8,7 +8,15 @@ bam="$2"
 out_blast="$3"
 out_cigar="$4"
 
-find "$palmer_dir" -name 'blastn_refine.txt' | xargs cat > "$out_blast"
+# Grab all the Palmer blast results from the regional subsets in the working
+# directories.
+find "$palmer_dir" -name 'blastn_refine.txt' \
+    | xargs cat > "$out_blast"
+
+# Clean up Palmer directory once we've gotten what we need from it to avoid
+# exhausting all the inodes on the drive when running many datasets.
+find "$palmer_dir" -maxdepth 2 -name 'chr*_*_*' -type d \
+    | xargs rm -r
 
 # TODO Extract this to an earlier step, since it only depends on the alignment
 # and it's wasteful to do it for every dataset+mei.
