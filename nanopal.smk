@@ -189,7 +189,6 @@ rule palmer:
     resources:
         mem="8GB",
         runtime="4h",
-        palmerinstances=1,
     shell:
         # First run Palmer.  Then grab all the Palmer blast results from the
         # regional subsets in the working directories.  Finally, clean up the

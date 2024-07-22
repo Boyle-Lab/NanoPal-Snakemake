@@ -15,7 +15,6 @@ default-resources:
   - slurm_partition=standard
   - runtime=5
   - mem_mb=1024
-  - palmerinstances=0
 jobs: 200
 local-cores: 2
 restart-times: 0
