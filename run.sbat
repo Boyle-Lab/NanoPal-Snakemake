@@ -4,7 +4,7 @@
 #SBATCH --mail-type=END
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=2
+#SBATCH --cpus-per-task=6
 #SBATCH --mem=12288
 #SBATCH --time=10:00:00
 #SBATCH --account=apboyle0
@@ -19,5 +19,6 @@ module load singularity
 
 time ./run-glakes.sh runs/real-data-test-gl.json \
     _all \
+    --local-cores 6 \
     --keep-incomplete \
     --keep-going
