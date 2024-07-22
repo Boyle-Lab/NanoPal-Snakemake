@@ -13,7 +13,6 @@ snakemake \
   --use-singularity \
   --configfile "config/glakes.json" "$RUN" \
   --profile "profiles/glakes" \
-  --resources palmerinstances=200 \
   --snakefile "nanopal.smk" \
   "$@"
 
