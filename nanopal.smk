@@ -180,7 +180,7 @@ rule palmer:
         reference=config["reference"],
         bam=scratch("{id}/alignment/alignment.bam"),
     output:
-        sentinel=touch(scratch("{id}/{mei}/palmer/{chromosome}/done")),
+        blast_results=scratch("{id}/{mei}/palmer/{chromosome}/collected_blastn_refine.txt")
     params:
         workdir=scratch("{id}/{mei}/palmer/{chromosome}/"),
         reference_version=config["reference_version"],
@@ -191,6 +191,10 @@ rule palmer:
         runtime="4h",
         palmerinstances=1,
     shell:
+        # First run Palmer.  Then grab all the Palmer blast results from the
+        # regional subsets in the working directories.  Finally, clean up the
+        # Palmer directory once we've gotten what we need from it to avoid
+        # exhausting all the inodes on the drive when running many datasets.
         logged(
             "/palmer/PALMER"
             "    --input {input.bam}"
@@ -201,12 +205,17 @@ rule palmer:
             "    --type {params.palmer_mei}"
             "    --chr {wildcards.chromosome}"
             "    --mode raw"
+            " && find {params.workdir} -name blastn_refine.txt"
+            "    | xargs cat > {output.blast_results}"
+            " && find {params.workdir} -maxdepth 2 -name 'chr*_*_*' -type d"
+            "    | xargs rm -r"
         )
 
 rule gather_matches:
     # From Nanopal script:
     #
     # > pull out all reads having putative L1Hs signal reported by PALMER
+    localrule: True
     log:
         scratch("_logs/gather_matches/{id}_{mei}.log"),
     benchmark:
@@ -216,8 +225,8 @@ rule gather_matches:
     input:
         container=containers("samtools"),
         script="scripts/gather-palmer-results.sh",
-        palmer_sentinels=expand(
-            scratch("{{id}}/{{mei}}/palmer/{chromosome}/done"),
+        palmer_blasts=expand(
+            scratch("{{id}}/{{mei}}/palmer/{chromosome}/collected_blastn_refine.txt"),
             chromosome=config["chromosomes"],
         ),
         bam=scratch("{id}/alignment/alignment.bam"),
@@ -228,15 +237,14 @@ rule gather_matches:
         palmer_dir=scratch("{id}/{mei}/palmer/"),
     threads: 1
     resources:
-        mem="4GB",
-        runtime="30m",
+        mem="2GB",
     shell:
         logged(
             "./{input.script} "
-            "  {params.palmer_dir}"
-            "  {input.bam}"
             "  {output.palmer_blast}"
             "  {output.palmer_cigar}"
+            "  {input.bam}"
+            "  {input.palmer_blasts}"
         )
 
 rule parse_cigar:
@@ -482,7 +490,7 @@ rule _palmer:
     localrule: True
     input:
         expand(
-            scratch("{id}/{mei}/palmer/{chromosome}/done"),
+            scratch("{id}/{mei}/palmer/{chromosome}/collected_blastn_refine.txt"),
             id=IDS,
             mei=config["mobile_elements"],
             chromosome=config["chromosomes"],
