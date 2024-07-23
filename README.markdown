@@ -157,50 +157,18 @@ and/or by watching the Snakemake tasks in the queue with something like:
 
 ## Output
 
-**TODO the following is outdated, need to update to describe the new output structure, which is something like:**
-
-    scratch-path/
-        _logs/
-        _benchmarks/
-        dataset_id1/
-            toplevel_step1/
-                …output files…
-            toplevel_step2/
-                …output files…
-            LINE/
-                target_level_step1/
-                    …output files…
-                target_level_step2/
-                    …output files…
-            AluYa/
-                target_level_step1/
-                    …output files…
-                target_level_step2/
-                    …output files…
-            …
-        dataset_id2/
-            …
-
-**Old notes:**
-
 The pipeline will put all of its output into subdirectories of `<scratch_path>/<batch_id>`:
 
 ```
-/scratch/apboyle_root/apboyle0/slosh/nanopal-snakemake-test-runs/scratch
-└── [ 4.0K]  real-data-test-02/
-    ├── [ 4.0K]  _benchmarks/
-    ├── [ 4.0K]  _logs/
-    ├── [ 4.0K]  alignment/
-    ├── [ 4.0K]  find_on_target/
-    ├── [ 4.0K]  find_valid_reads/
-    ├── [ 4.0K]  gather_matches/
-    ├── [ 4.0K]  input/
-    ├── [ 4.0K]  intersect/
-    ├── [ 4.0K]  intersect_again/
-    ├── [ 4.0K]  palmer/
-    ├── [ 4.0K]  palmer_on_target/
-    ├── [ 4.0K]  parse_cigar/
-    └── [ 4.0K]  reference/
+/scratch/apboyle_root/apboyle0/slosh/nanopal-snakemake-test-runs/scratch/mei-ad
+├── [ 4.0K]  _benchmarks/
+├── [ 4.0K]  _logs/
+├── [ 4.0K]  mei_db/
+├── [ 4.0K]  reference/
+├── [  64K]  1096_Control_Frontal-Cortex/
+├── [ 4.0K]  1096_Control_Occipital-Cortex/
+├── [  64K]  1096_Control_Parietal-Cortex/
+└── [ 4.0K]  1096_Control_Cerebellum/
 ```
 
 The `_benchmarks` directory stores the benchmark `tsv`s collected automatically
@@ -209,37 +177,48 @@ by Snakemake, which can be nice if you want to try to optimize the
 
 `_logs` stores the logs for all the various Snakemake tasks.
 
-All the rest of the directories are the working directories for the Snakemake
-tasks with the various names.  Each will have one subdirectory per sample, and
-those that are parallelized across targets will have another layer of
-subdirectories under them:
+`mei_db` and `reference` are top-level Snakemake steps whose results are used
+for all the datasets.
+
+All the rest of the directories are the working directories for individual
+datasets.  There will be one subdirectory per sample with the Snakemake steps
+for that sample inside. Steps that are parallelized across targets will have an
+extra per-target directory as well:
 
 ```
-find_valid_reads/
-└── [ 4.0K]  20230202_1513_MN35288_FAS89555_2289ca4f/
-    └── [ 5.5M]  RC.all.list
-
-parse_cigar/
-└── [ 4.0K]  20230202_1513_MN35288_FAS89555_2289ca4f/
-    ├── [ 4.0K]  AluYa/
-    │   ├── [ 1.3M]  cigar_ref.txt
-    │   ├── [  13M]  cigar_results.all.txt
-    │   └── [  18M]  mapped.info.final.txt
-    ├── [ 4.0K]  AluYb/
-    │   ├── [ 1.3M]  cigar_ref.txt
-    │   ├── [  13M]  cigar_results.all.txt
-    │   └── [  18M]  mapped.info.final.txt
-    └── [ 4.0K]  LINE/
-        ├── [ 1.3M]  cigar_ref.txt
-        ├── [  13M]  cigar_results.all.txt
-        └── [  18M]  mapped.info.final.txt
+/scratch/apboyle_root/apboyle0/slosh/nanopal-snakemake-test-runs/scratch/mei-ad
+└── [ 4.0K]  1096_Control_Cerebellum/
+    ├── [ 4.0K]  input/…
+    ├── [ 4.0K]  alignment/…
+    ├── [ 4.0K]  find_revcomp_reads/…
+    ├── [ 4.0K]  AluYa/
+    │   ├── [ 4.0K]  find_on_target/…
+    │   ├── [ 4.0K]  gather_matches/…
+    │   ├── [ 4.0K]  intersect/…
+    │   ├── [ 4.0K]  intersect_again/…
+    │   ├── [  64K]  palmer/…
+    │   ├── [ 4.0K]  palmer_on_target/…
+    │   └── [ 4.0K]  parse_cigar/…
+    ├── [ 4.0K]  AluYb/
+    │   ├── [ 4.0K]  find_on_target/…
+    │   ├── [ 4.0K]  gather_matches/…
+    │   ├── [ 4.0K]  intersect/…
+    │   ├── [ 4.0K]  intersect_again/…
+    │   ├── [  64K]  palmer/…
+    │   ├── [ 4.0K]  palmer_on_target/…
+    │   └── [ 4.0K]  parse_cigar/…
+    └── [ 4.0K]  LINE/
+        ├── [ 4.0K]  find_on_target/…
+        ├── [ 4.0K]  gather_matches/…
+        ├── [ 4.0K]  intersect/…
+        ├── [ 4.0K]  intersect_again/…
+        ├── [  64K]  palmer/…
+        ├── [ 4.0K]  palmer_on_target/…
+        └── [ 4.0K]  parse_cigar/…
 ```
 
 The final output numbers (which were just dumped to standard output in the
-vanilla version of Nanopal) will be under `intersect_again/result-log.txt` (TODO
-we should add another Snakemake step to collect all the end results into
-a single place for easier viewing/downloading).
-
-TODO Note, at some point we might invert the structure of the directories so
-instead of `<step>/<sample>/<target>` it's structured
-`<sample>/<step>/<target>`, but that's still yet to be decided.
+vanilla version of Nanopal) will be under
+`<target>/intersect_again/result-log.txt` (TODO we should add another Snakemake
+step to collect all the end results into a single place for easier
+viewing/downloading).
