@@ -448,6 +448,7 @@ rule intersect_again:
         out_dir=directory(scratch("{id}/{mei}/intersect_again/")),
         out_summary=scratch("{id}/{mei}/intersect_again/summary.final.2.txt"),
         out_result_log=scratch("{id}/{mei}/intersect_again/result-log.txt"),
+        out_result_csv=scratch("{id}/{mei}/intersect_again/result.csv"),
     threads: 2 # TODO
     resources:
         mem="12GB",
@@ -455,6 +456,7 @@ rule intersect_again:
     shell:
         logged(
             "./{input.script}"
+            "  {wildcards.id}"
             "  {input.ref_mei}"
             "  {input.pp_mei}"
             "  {input.in_summary}"
@@ -463,6 +465,37 @@ rule intersect_again:
             "  {output.out_dir}"
             "  {output.out_summary}"
             "  {output.out_result_log}"
+            "  {output.out_result_csv}"
+        )
+
+rule collect_results:
+    localrule: True
+    log:
+        scratch("_logs/collect_results.log"),
+    benchmark:
+        scratch("_benchmarks/collect_results.tsv")
+    input:
+        script="scripts/collect-results.sh",
+        result_csvs=expand(
+            scratch("{id}/{mei}/intersect_again/result.csv"),
+            id=IDS,
+            mei=config["mobile_elements"],
+        ),
+    params:
+        result_dirs=expand(
+            scratch("{id}/{mei}/intersect_again/"),
+            id=IDS,
+            mei=config["mobile_elements"],
+        ),
+    output:
+        out_dir=directory(scratch("collect-results")),
+        result_csv=scratch("collect-results/results.csv"),
+    threads: 1
+    shell:
+        logged(
+            "./{input.script}"
+            "  {output.out_dir}"
+            "  {params.result_dirs}"
         )
 
 
@@ -531,11 +564,13 @@ rule _intersect:
             mei=config["mobile_elements"],
         ),
 
+rule _results:
+    localrule: True
+    input:
+        scratch("collect-results/results.csv"),
+
 rule _all:
     default_target: True
     localrule: True
     input:
-        rules._palmer.input,
-        rules._alignment.input,
-        rules._on_target.input,
-        rules._intersect.input,
+        rules._results.input,

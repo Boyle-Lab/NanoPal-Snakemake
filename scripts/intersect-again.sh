@@ -3,15 +3,27 @@
 set -eu
 set -x
 
+dataset_id="$1"
+shift
 ref_mei=$(readlink -f "$1") # hg38.RM.L1.ref
-pp_mei=$(readlink -f "$2") # L1.inter.fi
-in_summary="$3" # summary.final.txt
-revcomp_read_ids="$4" # RC.all.list
-mei="$5" # LINE
+shift
+pp_mei=$(readlink -f "$1") # L1.inter.fi
+shift
+in_summary="$1" # summary.final.txt
+shift
+revcomp_read_ids="$1" # RC.all.list
+shift
+mei="$1" # LINE
+shift
 
-out_dir="$6"
-out_summary="$7" # summary.final.2.txt
-out_result_log="$8" # formerly stdout
+out_dir="$1"
+shift
+out_summary="$1" # summary.final.2.txt
+shift
+out_result_log="$1" # formerly stdout
+shift
+out_result_csv="$1"
+shift
 
 mkdir -p "$out_dir"
 cd "$out_dir"
@@ -260,8 +272,8 @@ cluster
 cp clustered.txt potential.clustered.txt.fi
 
 {
-    echo "There are ${SIGNAL1} reads caputuring putative signals on one end."
-    echo "There are ${SIGNAL2} reads caputuring putative signals on both ends."
+    echo "There are ${SIGNAL1} reads capturing putative signals on one end."
+    echo "There are ${SIGNAL2} reads capturing putative signals on both ends."
     echo "There are ${FAIL} reads having no putative signals."
     echo "Enrichment: ${ENRICHMENT}% of reads have signal(s)."
 
@@ -338,4 +350,11 @@ cp clustered.txt potential.clustered.txt.fi
             ;;
     esac
 } > "$out_result_log"
+
+{
+    potential_meis=$(wc -l potential.clustered.txt.fi | awk '{print $1}')
+
+    echo "id,target,signal_single_end,signal_double_end,no_signal,enrichment,potential_meis"
+    echo "${dataset_id},${mei},${SIGNAL1},${SIGNAL2},${FAIL},${ENRICHMENT},${potential_meis}"
+} > "$out_result_csv"
 
