@@ -22,8 +22,6 @@ out_summary="$1" # summary.final.2.txt
 shift
 out_result_log="$1" # formerly stdout
 shift
-out_result_csv="$1"
-shift
 
 mkdir -p "$out_dir"
 cd "$out_dir"
@@ -350,11 +348,3 @@ cp clustered.txt potential.clustered.txt.fi
             ;;
     esac
 } > "$out_result_log"
-
-{
-    potential_meis=$(wc -l potential.clustered.txt.fi | awk '{print $1}')
-
-    echo "id,target,signal_single_end,signal_double_end,no_signal,enrichment,potential_meis"
-    echo "${dataset_id},${mei},${SIGNAL1},${SIGNAL2},${FAIL},${ENRICHMENT},${potential_meis}"
-} > "$out_result_csv"
-

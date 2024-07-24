@@ -138,7 +138,6 @@ rule alignment:
         )
 
 rule find_revcomp_reads:
-    localrule: True
     log:
         scratch("_logs/find_revcomp_reads/{id}.log"),
     benchmark:
@@ -151,12 +150,15 @@ rule find_revcomp_reads:
     output:
         revcomp_read_ids=scratch("{id}/find_revcomp_reads/RC.all.list"),
     threads: 2
+    resources:
+        mem="2GB",
+        runtime="20m",
     shell:
         logged(
             "samtools view {input.bam}"
             "    -q 10 -F 0x100 -F 0x200 -F 0x800 -F 0x400 -f 0x10"
-            " | awk '{{print $1}}'"
-            " > {output.revcomp_read_ids}"
+            "  | awk '{{print $1}}'"
+            "  > {output.revcomp_read_ids}"
         )
 
 def palmer_mei_param(wc):
@@ -247,7 +249,6 @@ rule gather_matches:
         )
 
 rule parse_cigar:
-    localrule: True
     log:
         scratch("_logs/parse_cigar/{id}_{mei}.log"),
     benchmark:
@@ -261,14 +262,17 @@ rule parse_cigar:
         cigar_results=scratch("{id}/{mei}/parse_cigar/cigar_results.all.txt"),
         cigar_ref=scratch("{id}/{mei}/parse_cigar/cigar_ref.txt"),
         mapped_info=scratch("{id}/{mei}/parse_cigar/mapped.info.final.txt"),
-    threads: 1
+    threads: 2
+    resources:
+        mem="2GB",
+        runtime="20m",
     shell:
         logged(
             "awk '{{print $4}}' {input.cigar_matches} | cigar_parser > {output.cigar_results}",
             "awk '{{print $4+$6+$10}}' {output.cigar_results} > {output.cigar_ref}",
             "paste {input.cigar_matches} {output.cigar_ref}"
-            " | awk '{{print $1, $2, $3, $3+$5}}'"
-            " > {output.mapped_info}"
+            "  | awk '{{print $1, $2, $3, $3+$5}}'"
+            "  > {output.mapped_info}"
         )
 
 def mei_fasta(wc):
@@ -448,7 +452,7 @@ rule intersect_again:
         out_dir=directory(scratch("{id}/{mei}/intersect_again/")),
         out_summary=scratch("{id}/{mei}/intersect_again/summary.final.2.txt"),
         out_result_log=scratch("{id}/{mei}/intersect_again/result-log.txt"),
-        out_result_csv=scratch("{id}/{mei}/intersect_again/result.csv"),
+        out_potential_meis=scratch("{id}/{mei}/intersect_again/potential.clustered.txt.fi"),
     threads: 2 # TODO
     resources:
         mem="12GB",
@@ -465,7 +469,38 @@ rule intersect_again:
             "  {output.out_dir}"
             "  {output.out_summary}"
             "  {output.out_result_log}"
-            "  {output.out_result_csv}"
+        )
+
+rule output_results:
+    log:
+        scratch("_logs/output_results/{id}_{mei}.log"),
+    benchmark:
+        scratch("_benchmarks/output_results/{id}_{mei}.tsv")
+    container:
+        containers("samtools")
+    input:
+        script="scripts/output-results.sh",
+        container=containers("nanopal-binaries"),
+        result_log=scratch("{id}/{mei}/intersect_again/result-log.txt"),
+        potential_meis=scratch("{id}/{mei}/intersect_again/potential.clustered.txt.fi"),
+        bam=scratch("{id}/alignment/alignment.bam"),
+    output:
+        csv=scratch("{id}/{mei}/output_results/result.csv"),
+        log=scratch("{id}/{mei}/output_results/result.txt"),
+    threads: 2
+    resources:
+        mem="6GB",
+        runtime="20m",
+    shell:
+        logged(
+            "./{input.script}"
+            "  {wildcards.id}"
+            "  {wildcards.mei}"
+            "  {input.bam}"
+            "  {input.potential_meis}"
+            "  {input.result_log}"
+            "  {output.csv}"
+            "  {output.log}"
         )
 
 rule collect_results:
@@ -477,13 +512,7 @@ rule collect_results:
     input:
         script="scripts/collect-results.sh",
         result_csvs=expand(
-            scratch("{id}/{mei}/intersect_again/result.csv"),
-            id=IDS,
-            mei=config["mobile_elements"],
-        ),
-    params:
-        result_dirs=expand(
-            scratch("{id}/{mei}/intersect_again/"),
+            scratch("{id}/{mei}/output_results/result.csv"),
             id=IDS,
             mei=config["mobile_elements"],
         ),
@@ -495,7 +524,7 @@ rule collect_results:
         logged(
             "./{input.script}"
             "  {output.out_dir}"
-            "  {params.result_dirs}"
+            "  {input.result_csvs}"
         )
 
 

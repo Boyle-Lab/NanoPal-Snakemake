@@ -4,6 +4,6 @@
         "minimap2": "minimap2.def",
         "nanopal-binaries": "nanopal-binaries.def",
         "palmer": "palmer.def",
-        "samtools": "docker://staphb/samtools:1.10"
+        "samtools": "samtools.def"
     }
 }

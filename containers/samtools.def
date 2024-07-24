@@ -1,0 +1,7 @@
+Bootstrap: docker
+From: staphb/samtools:1.10
+
+%post
+    wget 'https://github.com/shenwei356/seqkit/releases/download/v2.8.2/seqkit_linux_amd64.tar.gz'
+    tar -xf seqkit_linux_amd64.tar.gz
+    mv seqkit /usr/local/bin
