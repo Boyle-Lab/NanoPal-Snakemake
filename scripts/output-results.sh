@@ -26,29 +26,31 @@ fail=$(awk       'NR == 3 {print $3}' "$result_log")
 enrichment=$(awk 'NR == 4 {print $2}' "$result_log")
 
 # Count potential events with/without multiple (≥2) read support.
-potential_mei_count=$(awk '          {n+=1} END {print n}' "$potential_meis")
-multiple_support=$(awk    '$5+$6 > 1 {n+=1} END {print n}' "$potential_meis")
+potential_mei_count=$(awk 'BEGIN {n=0}           {n+=1} END {print n}' "$potential_meis")
+multiple_support=$(awk    'BEGIN {n=0} $5+$6 > 1 {n+=1} END {print n}' "$potential_meis")
 
 # Get some basic read counts/stats from the BAM.
 total_reads=$(samtools    view -c        "$bam")
-percent_mapped_reads=$(samtools   view -c -F 0x4 "$bam" | awk -v n="$total_reads" '{print $1/n}')
-percent_unmapped_reads=$(samtools view -c -f 0x4 "$bam" | awk -v n="$total_reads" '{print $1/n}')
-percent_low_mapq=$(samtools view -c -q 10 "$bam" | awk -v n="$total_reads" '{print 1 - ($1/n)}')
+percent_mapped_reads=$(samtools   view -c -F 0x4 "$bam" | awk -v n="$total_reads" '{print 100.0 * $1/n}')
+percent_unmapped_reads=$(samtools view -c -f 0x4 "$bam" | awk -v n="$total_reads" '{print 100.0 * $1/n}')
+percent_low_mapq=$(samtools view -c -q 10 "$bam" | awk -v n="$total_reads" '{print 100.0 * 1 - ($1/n)}')
 
 # Get some stats about the unmapped reads. seqkit stats output looks like:
 #
 #     file    format  type    num_seqs        sum_len min_len avg_len max_len Q1      Q2      Q3      sum_gap N50     Q20(%)  Q30(%)  GC(%)
 #     data…
 
-unmapped_average_length=$(samtools view -f 0x4 "$bam" | samtools fastq | seqkit stats -a -T | awk 'NR == 2 {print  $7}')
-unmapped_n50=$(samtools            view -f 0x4 "$bam" | samtools fastq | seqkit stats -a -T | awk 'NR == 2 {print $13}')
+mapped_average_length=$(samtools   fastq -F 0x4 "$bam" | seqkit stats -a -T | awk 'NR == 2 {print  $7}')
+mapped_n50=$(samtools              fastq -F 0x4 "$bam" | seqkit stats -a -T | awk 'NR == 2 {print $13}')
+unmapped_average_length=$(samtools fastq -f 0x4 "$bam" | seqkit stats -a -T | awk 'NR == 2 {print  $7}')
+unmapped_n50=$(samtools            fastq -f 0x4 "$bam" | seqkit stats -a -T | awk 'NR == 2 {print $13}')
 
 # Output CSV ------------------------------------------------------------------
 
 {
-    echo "id,target,total_reads,percent_mapped_reads,percent_unmapped_reads,unmapped_average_length,unmapped_n50,percent_low_mapq,signal_single_end,signal_double_end,no_signal,enrichment,potential_meis,multiply_supported_potential_meis"
+    echo "id,target,total_reads,percent_mapped_reads,mapped_average_length,mapped_n50,percent_unmapped_reads,unmapped_average_length,unmapped_n50,percent_low_mapq,signal_single_end,signal_double_end,no_signal,enrichment,potential_meis,multiply_supported_potential_meis"
 
-    echo "${dataset_id},${mei},${total_reads},${percent_mapped_reads},${percent_unmapped_reads},${unmapped_average_length},${unmapped_n50},${percent_low_mapq},${signal1},${signal2},${fail},${enrichment},${potential_mei_count},${multiple_support}"
+    echo "${dataset_id},${mei},${total_reads},${percent_mapped_reads}%,${mapped_average_length},${mapped_n50},${percent_unmapped_reads}%,${unmapped_average_length},${unmapped_n50},${percent_low_mapq}%,${signal1},${signal2},${fail},${enrichment},${potential_mei_count},${multiple_support}"
 } > "$out_csv"
 
 cp "$result_log" "$out_log"

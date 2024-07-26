@@ -3,7 +3,7 @@
 set -euo pipefail
 set -x
 
-input_dirs="$1"
+input_files="$1"
 
 export output_fastq="$2"
 export output_fasta="$3"
@@ -12,12 +12,8 @@ export output_fasta="$3"
 rm -f "$output_fastq"
 # rm -f "$output_basecall_info"
 
-function retrieve_input {
-    set -euo pipefail
-    set -x
-    # TODO For older acquisitions the data might be in a differently-named file,
-    # could branch to handle that here.
-    tar="$1/basecalled_output.tar"
+function retrieve_from_tar {
+    tar="$1"
 
     # Pull out all the reads into a FASTQ.
     tar -x -f "$tar" \
@@ -25,22 +21,48 @@ function retrieve_input {
         --wildcards 'basecalled_output/pass/*.fastq.gz' \
     | gunzip - \
     >> "$output_fastq"
+}
 
-    # Pull out the basecalling metadata into a separate text file.
+function retrieve_from_bam {
+    bam="$1"
+
+    # Copy the tags from Dorado, see https://github.com/nanoporetech/dorado/blob/master/documentation/SAM.md
+    samtools fastq "$bam" \
+      -T MM,pi,sp,ns,ts,RG,qs,ts,ns,mx,ch,rn,st,du,fn,sm,sd,sv,mv,dx,pi,sp,pt,bh,MN \
+    >> "$output_fastq"
+}
+
+function retrieve_input {
+    set -euo pipefail
+    set -x
+
+    case "$1" in
+      *.bam)
+        retrieve_from_bam "$1"
+        ;;
+      *.tar | *.tar.gz | *.tgz)
+        retrieve_from_tar "$1"
+        ;;
+      *)
+        echo "Bad input file $1 -- expected BAM or tar." >&2
+        exit 1
+        ;;
+    esac
+
+    # TODO: Pull out the basecalling metadata into a separate text file.
     # log=$(tar --list -f "$tar" \
     #           --wildcards 'basecalled_output/ont_basecall_client_log-*' \
     #       | sort | head -n 1)
 
     # tar -x -f "$tar" --to-stdout "$log" | head -n 20 >> "$output_basecall_info"
-
-    # Example for the test dataset
-    # cat "$input_dir"/*.fastq > "$output_fastq"
 }
 
 export -f retrieve_input
+export -f retrieve_from_bam
+export -f retrieve_from_tar
 
-echo "$input_dirs" \
-    | xargs -I DIR bash -c 'retrieve_input "$@"' _ DIR
+echo "$input_files" \
+    | xargs -I FILE bash -c 'retrieve_input "$@"' _ FILE
 
 # Convert the FASTQ to a FASTA.
 awk '

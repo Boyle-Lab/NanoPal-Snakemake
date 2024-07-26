@@ -44,23 +44,26 @@ rule container:
     shell:
         "singularity pull {output} {params.source}"
 
-def dataset_input_dirs(wc):
-    dirs = config["datasets"][wc.id]
-    if isinstance(dirs, str):
-        dirs = [dirs]
-    return [directory(d) for d in dirs]
+def dataset_input_files(wc):
+    paths = config["datasets"][wc.id]
+    if isinstance(paths, str):
+        paths = [paths]
+    return paths
 
 rule input:
     log:
         scratch("_logs/input/{id}.log"),
+    container:
+        containers("samtools")
     input:
+        container=containers("samtools"),
         script="scripts/retrieve-input.sh",
-        input_dirs=dataset_input_dirs,
+        input_files=dataset_input_files,
     output:
         fastq=scratch("{id}/input/batch.fastq"),
         fasta=scratch("{id}/input/batch.fasta"),
     params:
-        input_dir_string=lambda wc, input: '\n'.join(input.input_dirs),
+        input_file_string=lambda wc, input: '\n'.join(input.input_files),
     threads: 2
     resources:
         mem="4GB",
@@ -68,7 +71,7 @@ rule input:
     shell:
         logged(
             "./{input.script} "
-            "  {params.input_dir_string:q}"
+            "  {params.input_file_string:q}"
             "  {output.fastq}"
             "  {output.fasta}"
             # "  {output.basecall_info}"
@@ -100,6 +103,32 @@ rule index_reference:
             " {input.reference}"
         )
 
+rule detect_ligation_artifacts:
+    log:
+        scratch("_logs/detect_ligation_artifacts/{id}.log"),
+    benchmark:
+        scratch("_benchmarks/detect_ligation_artifacts/{id}.tsv")
+    container:
+        containers("liger2liger")
+    input:
+        container=containers("liger2liger"),
+        fastq=scratch("{id}/input/batch.fastq"),
+        index=scratch("reference/index.mmi"),
+    output:
+        result=scratch("{id}/detect_ligation_artifacts/ligation_artifacts.txt"),
+    params:
+        output_dir=scratch("{id}/detect_ligation_artifacts"),
+    threads: 24
+    resources:
+        mem="72GB",
+        runtime="3h",
+    shell:
+        logged(
+            "cd {params.output_dir}",
+            "liger2liger --ref {input.index} --fastq {input.fastq} --n_threads {threads}",
+            "cp {params.output_dir}/batch_VS_index/batch_VS_index.chimeric_reads.txt {output.result}"
+        )
+
 rule alignment:
     log:
         scratch("_logs/alignment/{id}.log"),
@@ -127,6 +156,7 @@ rule alignment:
             "find {params.output_dir} -name '*.tmp.*' | xargs -r rm",
             "minimap2"
             "  -a"
+            "  -y"
             "  -x map-ont"
             "  -t {threads}"
             "  --secondary=no"
@@ -152,7 +182,7 @@ rule find_revcomp_reads:
     threads: 2
     resources:
         mem="2GB",
-        runtime="20m",
+        runtime="30m",
     shell:
         logged(
             "samtools view {input.bam}"
@@ -265,7 +295,7 @@ rule parse_cigar:
     threads: 2
     resources:
         mem="2GB",
-        runtime="20m",
+        runtime="30m",
     shell:
         logged(
             "awk '{{print $4}}' {input.cigar_matches} | cigar_parser > {output.cigar_results}",
@@ -490,7 +520,7 @@ rule output_results:
     threads: 2
     resources:
         mem="6GB",
-        runtime="20m",
+        runtime="30m",
     shell:
         logged(
             "./{input.script}"
@@ -517,13 +547,12 @@ rule collect_results:
             mei=config["mobile_elements"],
         ),
     output:
-        out_dir=directory(scratch("collect-results")),
-        result_csv=scratch("collect-results/results.csv"),
+        csv=scratch("collect-results/results.csv"),
     threads: 1
     shell:
         logged(
             "./{input.script}"
-            "  {output.out_dir}"
+            "  {output.csv}"
             "  {input.result_csvs}"
         )
 
@@ -597,6 +626,10 @@ rule _results:
     localrule: True
     input:
         scratch("collect-results/results.csv"),
+        expand(
+            scratch("{id}/detect_ligation_artifacts/ligation_artifacts.txt"),
+            id=IDS
+        ),
 
 rule _all:
     default_target: True

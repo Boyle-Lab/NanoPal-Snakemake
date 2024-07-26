@@ -1,6 +1,7 @@
 {
     "containers": {
         "blast": "docker://staphb/blast:2.15.0",
+        "liger2liger": "liger2liger.def",
         "minimap2": "minimap2.def",
         "nanopal-binaries": "nanopal-binaries.def",
         "palmer": "palmer.def",
