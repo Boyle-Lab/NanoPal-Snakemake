@@ -1,0 +1,42 @@
+Bootstrap: localimage
+From: minimap2.sif
+
+# See https://github.com/rlorigro/Liger2LiGer
+# wget https://github.com/rlorigro/Liger2LiGer/archive/refs/heads/main.zip -O liger2liger.zip
+# unzip liger2liger.zip
+# tar -czf liger2liger.tar.gz Liger2LiGer-main/
+
+# curl -O http://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.gz
+
+%files
+    ./liger2liger.tar.gz /liger2liger.tar.gz
+    ./autoconf-2.69.tar.gz /autoconf-2.69.tar.gz
+    ./liger2liger.sh /usr/local/bin/liger2liger
+
+%post
+    apt-get update
+
+    DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC \
+        apt-get install -y --no-install-recommends \
+        libbz2-dev curl build-essential cmake zlib1g-dev m4 python3-matplotlib
+
+    cd /
+    tar -xf autoconf-2.69.tar.gz
+    cd autoconf-2.69
+    ./configure
+    make
+    make install
+
+    cd /
+    tar -xf liger2liger.tar.gz
+    cd Liger2LiGer-main
+    mkdir build
+    cd build
+    cmake ..
+    make
+
+    apt-get autoclean
+    rm -rf /var/lib/apt/lists/*
+
+%runscript
+    exec liger2liger "$@"
