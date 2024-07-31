@@ -6,14 +6,14 @@
     "scratch_path":   "/scratch/apboyle_root/apboyle0/slosh/nanopal-snakemake-test-runs/scratch",
     "container_path": "/scratch/apboyle_root/apboyle0/slosh/nanopal-snakemake-test-runs/containers",
     "datasets": {
-        "p2-acq1": ["/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240606_1417_P2S-01935-B_PAW86158_158598d3"],
-        "p2-acq2": ["/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240529_1010_P2S-01935-A_PAK58332_285f9616",
-                    "/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240529_1356_P2S-01935-A_PAK58332_17eb569e"],
-        "minion": ["/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240523_1455_MN40776_FAY82215_1b3c041f"],
-        "everything": ["/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240606_1417_P2S-01935-B_PAW86158_158598d3",
-                       "/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240529_1010_P2S-01935-A_PAK58332_285f9616",
-                       "/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240529_1356_P2S-01935-A_PAK58332_17eb569e",
-                       "/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240523_1455_MN40776_FAY82215_1b3c041f"]
+        "p2-acq1": ["/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240606_1417_P2S-01935-B_PAW86158_158598d3/57b768b9ec81290d2b070df0f53667e32169b91c.sorted.bam"],
+        "p2-acq2": ["/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240529_1010_P2S-01935-A_PAK58332_285f9616/c05f7e73c663028fe6c54432fd8ec97f675e48b2.sorted.bam",
+                    "/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240529_1356_P2S-01935-A_PAK58332_17eb569e/aeaebaa1dadbf6ba45a132233e48005ad66ff1a5.sorted.bam"],
+        "minion": ["/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240523_1455_MN40776_FAY82215_1b3c041f/74afcd8e597181d7f8bb617588d99aa322fa4cf5.sorted.bam"],
+        "everything": ["/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240606_1417_P2S-01935-B_PAW86158_158598d3/57b768b9ec81290d2b070df0f53667e32169b91c.sorted.bam",
+                       "/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240529_1010_P2S-01935-A_PAK58332_285f9616/c05f7e73c663028fe6c54432fd8ec97f675e48b2.sorted.bam",
+                       "/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240529_1356_P2S-01935-A_PAK58332_17eb569e/aeaebaa1dadbf6ba45a132233e48005ad66ff1a5.sorted.bam",
+                       "/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240523_1455_MN40776_FAY82215_1b3c041f/74afcd8e597181d7f8bb617588d99aa322fa4cf5.sorted.bam"]
     },
     "chromosomes": [
         "chr1",

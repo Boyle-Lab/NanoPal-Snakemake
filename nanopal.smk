@@ -129,6 +129,33 @@ rule detect_ligation_artifacts:
             "cp {params.output_dir}/batch_VS_index/batch_VS_index.chimeric_reads.txt {output.result}"
         )
 
+rule detect_foldback_chimeras:
+    log:
+        scratch("_logs/detect_foldback_chimeras/{id}.log"),
+    benchmark:
+        scratch("_benchmarks/detect_foldback_chimeras/{id}.tsv")
+    container:
+        containers("samtools")
+    input:
+        container=containers("samtools"),
+        script="scripts/detect-foldback-chimeras.sh",
+        bam=scratch("{id}/alignment/alignment.bam"),
+    output:
+        result=scratch("{id}/detect_foldback_chimeras/foldback_chimeras.txt"),
+    params:
+        output_dir=scratch("{id}/detect_ligation_artifacts"),
+    threads: 24
+    resources:
+        mem="128GB",
+        runtime="3h",
+    shell:
+        logged(
+            "./{input.script} "
+            "  {threads}"
+            "  {input.bam}"
+            "  {output.result}"
+        )
+
 rule alignment:
     log:
         scratch("_logs/alignment/{id}.log"),
@@ -520,7 +547,7 @@ rule output_results:
     threads: 2
     resources:
         mem="6GB",
-        runtime="30m",
+        runtime="3h",
     shell:
         logged(
             "./{input.script}"

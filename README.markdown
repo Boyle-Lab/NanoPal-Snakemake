@@ -43,14 +43,14 @@ A single run config here looks something like this:
     "scratch_path":   "/scratch/apboyle_root/apboyle0/slosh/nanopal-snakemake-test-runs/scratch",
     "container_path": "/scratch/apboyle_root/apboyle0/slosh/nanopal-snakemake-test-runs/containers",
     "datasets": {
-        "minion":     "/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240523_1455_MN40776_FAY82215_1b3c041f",
-        "p2-acq1":    ["/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240606_1417_P2S-01935-B_PAW86158_158598d3"],
-        "p2-acq2":    ["/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240529_1010_P2S-01935-A_PAK58332_285f9616",
-                       "/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240529_1356_P2S-01935-A_PAK58332_17eb569e"],
-        "everything": ["/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240606_1417_P2S-01935-B_PAW86158_158598d3",
-                       "/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240529_1010_P2S-01935-A_PAK58332_285f9616",
-                       "/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240529_1356_P2S-01935-A_PAK58332_17eb569e",
-                       "/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240523_1455_MN40776_FAY82215_1b3c041f"]
+        "p2-acq1": ["/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240606_1417_P2S-01935-B_PAW86158_158598d3/57b768b9ec81290d2b070df0f53667e32169b91c.sorted.bam"],
+        "p2-acq2": ["/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240529_1010_P2S-01935-A_PAK58332_285f9616/c05f7e73c663028fe6c54432fd8ec97f675e48b2.sorted.bam",
+                    "/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240529_1356_P2S-01935-A_PAK58332_17eb569e/aeaebaa1dadbf6ba45a132233e48005ad66ff1a5.sorted.bam"],
+        "minion": ["/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240523_1455_MN40776_FAY82215_1b3c041f/74afcd8e597181d7f8bb617588d99aa322fa4cf5.sorted.bam"],
+        "everything": ["/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240606_1417_P2S-01935-B_PAW86158_158598d3/57b768b9ec81290d2b070df0f53667e32169b91c.sorted.bam",
+                       "/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240529_1010_P2S-01935-A_PAK58332_285f9616/c05f7e73c663028fe6c54432fd8ec97f675e48b2.sorted.bam",
+                       "/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240529_1356_P2S-01935-A_PAK58332_17eb569e/aeaebaa1dadbf6ba45a132233e48005ad66ff1a5.sorted.bam",
+                       "/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240523_1455_MN40776_FAY82215_1b3c041f/74afcd8e597181d7f8bb617588d99aa322fa4cf5.sorted.bam"]
     },
     "chromosomes": [
         "chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9",
@@ -71,9 +71,9 @@ name in the `scratch_path` directory.
 on.
 
 Each entry in the `datasets` dictionary should have a unique ID as the key and
-a list of directories as the value.  The data from all the directories in the
-list will be combined and used as input to the pipeline, which can be handy if
-e.g.:
+a list of `basecalled_output.tar` or BAM files as the value.  The data from all
+the files in the list will be combined and used as input to the pipeline, which
+can be handy if e.g.:
 
 * You have multiple separate ONT data directories for the same sample because
   you had to pause and restart the sequencer (the `p2-acq2` dataset in the
@@ -81,14 +81,9 @@ e.g.:
 * You want to combine multiple sequencing runs into one big pool and run the
   pipeline on all the data together (the `everything` dataset in the example).
 
-If you only have one directory for an entry you can optionally use a single
-string for the value for convenience, instead of having to wrap it up as
+If you only have one file for an entry you can optionally use a single string
+for the value for convenience, instead of having to wrap it up as
 a single-element list (the `minion` dataset in the example).
-
-Each of the directories you specify must have a `basecalled_output.tar` file in
-it, which is where the pipeline will pull the data from.  Note that some of our
-older sequencing runs have a slightly different format here — see the TODO in
-`scripts/retrieve-input.sh` for more context.
 
 ## Containers
 
