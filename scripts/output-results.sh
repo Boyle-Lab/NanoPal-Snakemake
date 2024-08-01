@@ -33,7 +33,7 @@ multiple_support=$(awk    'BEGIN {n=0} $5+$6 > 1 {n+=1} END {print n}' "$potenti
 total_reads=$(samtools    view -c        "$bam")
 percent_mapped_reads=$(samtools   view -c -F 0x4 "$bam" | awk -v n="$total_reads" '{print 100.0 * $1/n}')
 percent_unmapped_reads=$(samtools view -c -f 0x4 "$bam" | awk -v n="$total_reads" '{print 100.0 * $1/n}')
-percent_low_mapq=$(samtools view -c -q 10 "$bam" | awk -v n="$total_reads" '{print 100.0 * 1 - ($1/n)}')
+percent_low_mapq=$(samtools view -c -q 10 "$bam" | awk -v n="$total_reads" '{print 100.0 * (1 - ($1/n))}')
 
 # Get some stats about the unmapped reads. seqkit stats output looks like:
 #
