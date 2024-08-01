@@ -410,10 +410,7 @@ rule palmer_on_target:
         scratch("_logs/palmer_on_target/{id}_{mei}.log"),
     benchmark:
         scratch("_benchmarks/palmer_on_target/{id}_{mei}.tsv")
-    container:
-        containers("palmer")
     input:
-        container=containers("palmer"),
         script="scripts/palmer-on-target.sh",
         palmer_blast=scratch("{id}/{mei}/gather_matches/blastn_refine.all.txt"),
         palmer_map=scratch("{id}/{mei}/parse_cigar/mapped.info.final.txt"),
@@ -480,7 +477,6 @@ rule intersect:
             "  {output.out_dir}"
             "  {output.out_summary}"
         )
-
 
 def pp_mei(wc):
     return {
