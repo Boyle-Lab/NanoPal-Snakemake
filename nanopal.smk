@@ -645,6 +645,22 @@ rule _intersect:
             mei=config["mobile_elements"],
         ),
 
+rule _ligation_artifacts:
+    localrule: True
+    input:
+        expand(
+            scratch("{id}/detect_ligation_artifacts/ligation_artifacts.txt"),
+            id=IDS,
+        ),
+
+rule _chimeras:
+    localrule: True
+    input:
+        expand(
+            scratch("{id}/detect_foldback_chimeras/foldback_chimeras.txt"),
+            id=IDS,
+        ),
+
 rule _results:
     localrule: True
     input:
