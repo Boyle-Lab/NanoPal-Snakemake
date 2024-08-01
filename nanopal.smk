@@ -263,9 +263,9 @@ rule palmer:
             "    --type {params.palmer_mei}"
             "    --chr {wildcards.chromosome}"
             "    --mode raw"
-            " && find {params.workdir} -name blastn_refine.txt"
+            " && find {params.workdir} -mindepth 1 -name blastn_refine.txt"
             "    | xargs cat > {output.blast_results}"
-            " && find {params.workdir} -maxdepth 2 -name 'chr*_*_*' -type d"
+            " && find {params.workdir} -mindepth 1 -maxdepth 2 -name 'chr*_*_*' -type d"
             "    | xargs rm -r"
         )
 
