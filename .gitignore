@@ -2,3 +2,7 @@ testresults
 containers/*.sif
 tmp/
 containers/nanopal-binaries/bin
+containers/*.tar.gz
+containers/*.zip
+runs/*.json
+
