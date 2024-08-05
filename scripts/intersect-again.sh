@@ -156,48 +156,48 @@ cat summary.final.PALMER.read.txt | awk '{
 # Getting chr, start, clusteringinfo, revcomp, 5/3, for a mix of palmer/nanopal signals
 cat summary.final.PALMER.read.txt | awk '{
     #       palmer 5         palmer 3         revcomp       nano 3/5
-    if      (($7+$8)  > 0 && ($9+$10) == 0 && $18 == 0 && ($5+$6) > 0) {print $11,$13,$17,$18,"3"} # palmer 5  true, palmer 3 false, revcomp false, nano 3 true
-    else if (($7+$8)  > 0 && ($9+$10) == 0 && $18 == 1 && ($3+$4) > 0) {print $11,$13,$17,$18,"3"} # palmer 5  true, palmer 3 false, revcomp  true, nano 5 true
-    else if (($7+$8) == 0 && ($9+$10)  > 0 && $18 == 0 && ($3+$4) > 0) {print $11,$12,$16,$18,"5"} # palmer 5 false, palmer 3  true, revcomp false, nano 5 true
-    else if (($7+$8) == 0 && ($9+$10)  > 0 && $18 == 1 && ($5+$6) > 0) {print $11,$12,$16,$18,"5"} # palmer 5 false, palmer 3  true, revcomp  true, nano 3 true
+    if      (($7+$8)  > 0 && ($9+$10) == 0 && $18 == 0 && ($5+$6) > 0) {print $11,$13,$17,$18,"3",".",$1} # palmer 5  true, palmer 3 false, revcomp false, nano 3 true, id
+    else if (($7+$8)  > 0 && ($9+$10) == 0 && $18 == 1 && ($3+$4) > 0) {print $11,$13,$17,$18,"3",".",$1} # palmer 5  true, palmer 3 false, revcomp  true, nano 5 true, id
+    else if (($7+$8) == 0 && ($9+$10)  > 0 && $18 == 0 && ($3+$4) > 0) {print $11,$12,$16,$18,"5",".",$1} # palmer 5 false, palmer 3  true, revcomp false, nano 5 true, id
+    else if (($7+$8) == 0 && ($9+$10)  > 0 && $18 == 1 && ($5+$6) > 0) {print $11,$12,$16,$18,"5",".",$1} # palmer 5 false, palmer 3  true, revcomp  true, nano 3 true, id
 }' | sort -k 2 -n | sort -k 1 > capture.loci.ref.add
 
 # Getting ... for when only nanopal has signal
 cat summary.final.ref.L1.read.txt | awk '{
     #        nano 5           nano 3          revcomp
-    if      (($3+$4)  > 0 && ($5+$6) == 0 && $18 == 0) {print $11,$12,$16,$18,"5"} # nano 5  true, nano 3 false, revcomp false
-    else if (($3+$4)  > 0 && ($5+$6) == 0 && $18 == 1) {print $11,$13,$17,$18,"3"} # nano 5  true, nano 3 false, revcomp  true
+    if      (($3+$4)  > 0 && ($5+$6) == 0 && $18 == 0) {print $11,$12,$16,$18,"5",".",$1} # nano 5  true, nano 3 false, revcomp false, id
+    else if (($3+$4)  > 0 && ($5+$6) == 0 && $18 == 1) {print $11,$13,$17,$18,"3",".",$1} # nano 5  true, nano 3 false, revcomp  true, id
 
-    else if (($3+$4) == 0 && ($5+$6)  > 0 && $18 == 0) {print $11,$13,$17,$18,"3"} # nano 5 false, nano 3  true, revcomp false
-    else if (($3+$4) == 0 && ($5+$6)  > 0 && $18 == 1) {print $11,$12,$16,$18,"5"} # nano 5 false, nano 3  true, revcomp  true
+    else if (($3+$4) == 0 && ($5+$6)  > 0 && $18 == 0) {print $11,$13,$17,$18,"3",".",$1} # nano 5 false, nano 3  true, revcomp false, id
+    else if (($3+$4) == 0 && ($5+$6)  > 0 && $18 == 1) {print $11,$12,$16,$18,"5",".",$1} # nano 5 false, nano 3  true, revcomp  true, id
 
-    else if (($3+$4)  > 0 && ($5+$6)  > 0            ) {print $11,$12,$16,$18,"5""\n"$11,$13,$17,$18,"3"} # nano 5 true, nano 3 true, revcomp whatever
+    else if (($3+$4)  > 0 && ($5+$6)  > 0            ) {print $11,$12,$16,$18,"5",".",$1"\n"$11,$13,$17,$18,"3",".",$1} # nano 5 true, nano 3 true, revcomp whatever, id
 }' | sort -k 2 -n | sort -k 1 > capture.loci.ref
 
 
-cat capture.loci.palmer | awk ' /cluster/ {print $1,$2,$2+1,$3,$4,$5,"Nanopore"}' > capture.loci.palmer.process
-cat capture.loci.palmer | awk '!/cluster/ {print $1,$2,$2+1,$3,$4,$5,$6,$7}'      > capture.loci.potential.process
+cat capture.loci.palmer | awk ' /cluster/ {print $1,$2,$2+1,$3,$4,$5,$6,$7}' > capture.loci.palmer.process
+cat capture.loci.palmer | awk '!/cluster/ {print $1,$2,$2+1,$3,$4,$5,$6,$7}' > capture.loci.potential.process
 
 cat capture.loci.ref capture.loci.ref.add > capture.loci.ref.all
 
 case "$mei" in
     LINE)
-        cat capture.loci.ref.all | grep L1HS |                                awk '{print $1,$2,$2+1,$3,$4,$5,"Nanopore"}' > capture.loci.r.l1hs
-        cat capture.loci.ref.all | grep -v L1HS | grep L1PA |                 awk '{print $1,$2,$2+1,$3,$4,$5,"Nanopore"}' > capture.loci.r.l1pa
-        cat capture.loci.ref.all | grep -v L1HS | grep -v L1PA | grep L1 |    awk '{print $1,$2,$2+1,$3,$4,$5,"Nanopore"}' > capture.loci.r.l1other
-        cat capture.loci.ref.all | grep -v L1HS | grep -v L1PA | grep -v L1 | awk '{print $1,$2,$2+1,$3,$4,$5,"Nanopore"}' > capture.loci.r.l1non
+        cat capture.loci.ref.all | grep L1HS |                                awk '{print $1,$2,$2+1,$3,$4,$5,$7}' > capture.loci.r.l1hs
+        cat capture.loci.ref.all | grep -v L1HS | grep L1PA |                 awk '{print $1,$2,$2+1,$3,$4,$5,$7}' > capture.loci.r.l1pa
+        cat capture.loci.ref.all | grep -v L1HS | grep -v L1PA | grep L1 |    awk '{print $1,$2,$2+1,$3,$4,$5,$7}' > capture.loci.r.l1other
+        cat capture.loci.ref.all | grep -v L1HS | grep -v L1PA | grep -v L1 | awk '{print $1,$2,$2+1,$3,$4,$5,$7}' > capture.loci.r.l1non
         ;;
     AluYa | AluYb)
-        cat capture.loci.ref.all | grep AluYa |                                   awk '{print $1,$2,$2+1,$3,$4,$5,"Nanopore"}' > capture.loci.r.AluYa5
-        cat capture.loci.ref.all | grep AluYb |                                   awk '{print $1,$2,$2+1,$3,$4,$5,"Nanopore"}' > capture.loci.r.AluYb8
-        cat capture.loci.ref.all | grep -v AluYa | grep -v AluYb | grep AluY    | awk '{print $1,$2,$2+1,$3,$4,$5,"Nanopore"}' > capture.loci.r.AluYother
-        cat capture.loci.ref.all | grep -v AluYa | grep -v AluYb | grep -v AluY | awk '{print $1,$2,$2+1,$3,$4,$5,"Nanopore"}' > capture.loci.r.AluYnon
+        cat capture.loci.ref.all | grep AluYa |                                   awk '{print $1,$2,$2+1,$3,$4,$5,$7}' > capture.loci.r.AluYa5
+        cat capture.loci.ref.all | grep AluYb |                                   awk '{print $1,$2,$2+1,$3,$4,$5,$7}' > capture.loci.r.AluYb8
+        cat capture.loci.ref.all | grep -v AluYa | grep -v AluYb | grep AluY    | awk '{print $1,$2,$2+1,$3,$4,$5,$7}' > capture.loci.r.AluYother
+        cat capture.loci.ref.all | grep -v AluYa | grep -v AluYb | grep -v AluY | awk '{print $1,$2,$2+1,$3,$4,$5,$7}' > capture.loci.r.AluYnon
         ;;
     SVA_E | SVA_F)
-        cat capture.loci.ref.all | grep SVA_E |                                  awk '{print $1,$2,$2+1,$3,$4,$5,"Nanopore"}' > capture.loci.r.SVA_E
-        cat capture.loci.ref.all | grep SVA_F |                                  awk '{print $1,$2,$2+1,$3,$4,$5,"Nanopore"}' > capture.loci.r.SVA_F
-        cat capture.loci.ref.all | grep -v SVA_E | grep -v SVA_F | grep SVA    | awk '{print $1,$2,$2+1,$3,$4,$5,"Nanopore"}' > capture.loci.r.SVAother
-        cat capture.loci.ref.all | grep -v SVA_E | grep -v SVA_F | grep -v SVA | awk '{print $1,$2,$2+1,$3,$4,$5,"Nanopore"}' > capture.loci.r.SVAnon
+        cat capture.loci.ref.all | grep SVA_E |                                  awk '{print $1,$2,$2+1,$3,$4,$5,$7}' > capture.loci.r.SVA_E
+        cat capture.loci.ref.all | grep SVA_F |                                  awk '{print $1,$2,$2+1,$3,$4,$5,$7}' > capture.loci.r.SVA_F
+        cat capture.loci.ref.all | grep -v SVA_E | grep -v SVA_F | grep SVA    | awk '{print $1,$2,$2+1,$3,$4,$5,$7}' > capture.loci.r.SVAother
+        cat capture.loci.ref.all | grep -v SVA_E | grep -v SVA_F | grep -v SVA | awk '{print $1,$2,$2+1,$3,$4,$5,$7}' > capture.loci.r.SVAnon
         ;;
     *)
         echo Unknown MEI type "$mei", expected one of: LINE AluYa AluYb SVA_E SVA_F
