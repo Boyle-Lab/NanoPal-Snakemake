@@ -39,6 +39,7 @@ A single run config here looks something like this:
     "batch_id": "hapmap-01",
     "mobile_elements": ["LINE", "AluYa", "AluYb"],
     "reference_version": "GRCh38",
+    "exclusions": "GM12878",
     "reference":      "/scratch/apboyle_root/apboyle0/slosh/nanopal-snakemake-test-runs/ref/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna",
     "scratch_path":   "/scratch/apboyle_root/apboyle0/slosh/nanopal-snakemake-test-runs/scratch",
     "container_path": "/scratch/apboyle_root/apboyle0/slosh/nanopal-snakemake-test-runs/containers",
@@ -59,6 +60,12 @@ A single run config here looks something like this:
     ]
 }
 ```
+
+`exclusions` denotes which set of non-reference-but-previously-known MEIs should
+be excluded from being called as novel MEIs.  For example, `"exclusions":
+"GM12878"` will pull out previously-identified MEIs in the GM12878 cell line and
+avoid reporting them as novel insertions.  Use `"exclusions": "none"` to disable
+this filtering and report all non-reference MEIs detected as novel MEIs.
 
 `batch_id` is a name for the run (TODO we should probably rename this to
 `run_id`).  The pipeline will store all its output under a directory with this
