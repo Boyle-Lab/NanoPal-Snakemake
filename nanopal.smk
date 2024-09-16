@@ -9,6 +9,7 @@ configfile: "config/base.json"
 
 IDS = config["datasets"].keys()
 BATCH_ID = config["batch_id"]
+EXCLUSIONS = config["exclusions"]
 SCRATCH_PATH = config["scratch_path"]
 CONTAINER_PATH = config["container_path"]
 
@@ -440,13 +441,18 @@ def ref_mei(wc):
     }[wc.mei]
 
 def orig_mei(wc):
-    return {
-        "LINE":  "meis/PALMER.NA12878.L1.txt",
-        "AluYa": "meis/PALMER.NA12878.ALU.txt",
-        "AluYb": "meis/PALMER.NA12878.ALU.txt",
-        "SVA_E": "meis/PALMER.NA12878.SVA.txt",
-        "SVA_F": "meis/PALMER.NA12878.SVA.txt",
-    }[wc.mei]
+    if EXCLUSIONS == "none":
+        return "meis/empty.txt"
+    else:
+        return {
+            "GM12878": {
+                "LINE":  "meis/PALMER.NA12878.L1.txt",
+                "AluYa": "meis/PALMER.NA12878.ALU.txt",
+                "AluYb": "meis/PALMER.NA12878.ALU.txt",
+                "SVA_E": "meis/PALMER.NA12878.SVA.txt",
+                "SVA_F": "meis/PALMER.NA12878.SVA.txt",
+            }[wc.mei]
+        }[EXCLUSIONS]
 
 rule intersect:
     log:
@@ -479,13 +485,18 @@ rule intersect:
         )
 
 def pp_mei(wc):
-    return {
-        "LINE":  "meis/union/L1.inter.fi",
-        "AluYa": "meis/union/ALU.inter.fi",
-        "AluYb": "meis/union/ALU.inter.fi",
-        "SVA_E": "meis/union/SVA.inter.fi",
-        "SVA_F": "meis/union/SVA.inter.fi",
-    }[wc.mei]
+    if EXCLUSIONS == "none":
+        return "meis/union/empty.txt"
+    else:
+        return {
+            "GM12878": {
+                "LINE":  "meis/union/L1.inter.fi",
+                "AluYa": "meis/union/ALU.inter.fi",
+                "AluYb": "meis/union/ALU.inter.fi",
+                "SVA_E": "meis/union/SVA.inter.fi",
+                "SVA_F": "meis/union/SVA.inter.fi",
+            }[wc.mei]
+        }[EXCLUSIONS]
 
 rule intersect_again:
     log:

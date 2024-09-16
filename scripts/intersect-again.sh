@@ -278,11 +278,11 @@ cp clustered.txt potential.clustered.txt.fi
 
     case "$mei" in
         LINE)
-            cat p.txt.fi | awk '{sum+=$1} END {print "Non-reference L1Hs sum = ", sum}'
-            cat r.l1hs.txt.fi | awk '{sum+=$1} END {print "Reference L1Hs sum = ", sum}'
-            cat r.l1pa.txt.fi | awk '{sum+=$1} END {print "Reference L1PA sum = ", sum}'
-            cat r.l1.txt.fi | awk '{sum+=$1} END {print "Other reference L1 sum = ", sum}'
-            cat potential.clustered.txt.fi | awk '{sum+=$4} END {print "Potential non-reference L1Hs sum = ", sum}'
+            cat p.txt.fi | awk 'BEGIN {sum=0} {sum+=$1} END {print "Non-reference L1Hs sum = ", sum}'
+            cat r.l1hs.txt.fi | awk 'BEGIN {sum=0} {sum+=$1} END {print "Reference L1Hs sum = ", sum}'
+            cat r.l1pa.txt.fi | awk 'BEGIN {sum=0} {sum+=$1} END {print "Reference L1PA sum = ", sum}'
+            cat r.l1.txt.fi | awk 'BEGIN {sum=0} {sum+=$1} END {print "Other reference L1 sum = ", sum}'
+            cat potential.clustered.txt.fi | awk 'BEGIN {sum=0} {sum+=$4} END {print "Potential non-reference L1Hs sum = ", sum}'
             echo "Number of non_LINE reads"
             cat capture.loci.r.l1non | wc -l | awk '{print $1}'
 
@@ -298,12 +298,12 @@ cp clustered.txt potential.clustered.txt.fi
             wc -l potential.clustered.txt.fi
             ;;
         AluYa | AluYb)
-            cat p.txt.fi | awk '{sum+=$1} END {print "Non-reference AluY reads sum = ", sum}'
-            cat r.AluYa5.txt.fi | awk '{sum+=$1} END {print "Reference AluYa reads sum = ", sum}'
-            cat r.AluYb8.txt.fi | awk '{sum+=$1} END {print "Reference AluYb reads sum = ", sum}'
-            cat r.AluY.txt.fi | awk '{sum+=$1} END {print "Other reference AluY reads sum = ", sum}'
+            cat p.txt.fi | awk 'BEGIN {sum=0} {sum+=$1} END {print "Non-reference AluY reads sum = ", sum}'
+            cat r.AluYa5.txt.fi | awk 'BEGIN {sum=0} {sum+=$1} END {print "Reference AluYa reads sum = ", sum}'
+            cat r.AluYb8.txt.fi | awk 'BEGIN {sum=0} {sum+=$1} END {print "Reference AluYb reads sum = ", sum}'
+            cat r.AluY.txt.fi | awk 'BEGIN {sum=0} {sum+=$1} END {print "Other reference AluY reads sum = ", sum}'
             cat capture.loci.r.AluYnon | grep -c Alu | awk '{print "Other reference Alu reads sum = "$1}'
-            cat potential.clustered.txt.fi | awk '{sum+=$4} END {print "Potential specific non-reference AluY reads sum = ", sum}'
+            cat potential.clustered.txt.fi | awk 'BEGIN {sum=0} {sum+=$4} END {print "Potential specific non-reference AluY reads sum = ", sum}'
             echo "Number of non_Alu reads"
             cat capture.loci.r.AluYnon | grep -cv Alu | awk '{print $1}'
 
@@ -321,12 +321,12 @@ cp clustered.txt potential.clustered.txt.fi
             wc -l potential.clustered.txt.fi
             ;;
         SVA_E | SVA_F)
-            cat p.txt.fi | awk '{sum+=$1} END {print "Non-reference SVA reads sum = ", sum}'
-            cat r.SVA_E.txt.fi | awk '{sum+=$1} END {print "Reference SVA_E reads sum = ", sum}'
-            cat r.SVA_F.txt.fi | awk '{sum+=$1} END {print "Reference SVA_F reads sum = ", sum}'
-            cat r.SVA_D.txt.fi | awk '{sum+=$1} END {print "Reference SVA_D reads sum = ", sum}'
-            cat r.SVAother.txt.fi | awk '{sum+=$1} END {print "Other reference SVA reads sum = ", sum}'
-            cat potential.clustered.txt.fi | awk '{sum+=$4} END {print "Potential specific non-reference SVA reads sum = ", sum}'
+            cat p.txt.fi | awk 'BEGIN {sum=0} {sum+=$1} END {print "Non-reference SVA reads sum = ", sum}'
+            cat r.SVA_E.txt.fi | awk 'BEGIN {sum=0} {sum+=$1} END {print "Reference SVA_E reads sum = ", sum}'
+            cat r.SVA_F.txt.fi | awk 'BEGIN {sum=0} {sum+=$1} END {print "Reference SVA_F reads sum = ", sum}'
+            cat r.SVA_D.txt.fi | awk 'BEGIN {sum=0} {sum+=$1} END {print "Reference SVA_D reads sum = ", sum}'
+            cat r.SVAother.txt.fi | awk 'BEGIN {sum=0} {sum+=$1} END {print "Other reference SVA reads sum = ", sum}'
+            cat potential.clustered.txt.fi | awk 'BEGIN {sum=0} {sum+=$4} END {print "Potential specific non-reference SVA reads sum = ", sum}'
             echo "Number of non_SVA reads"
             cat capture.loci.r.SVAnon | wc -l | awk '{print $1}'
 
