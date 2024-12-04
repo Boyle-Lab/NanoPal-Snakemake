@@ -28,7 +28,7 @@ function retrieve_from_bam {
 
     # Copy the tags from Dorado, see https://github.com/nanoporetech/dorado/blob/master/documentation/SAM.md
     samtools fastq "$bam" \
-      -T MM,pi,sp,ns,ts,RG,qs,ts,ns,mx,ch,rn,st,du,fn,sm,sd,sv,mv,dx,pi,sp,pt,bh,MN \
+      -T MM,pi,sp,ns,ts,RG,qs,ts,ns,mx,ch,rn,st,du,fn,sm,sd,sv,dx,pi,sp,pt,bh,MN \
     >> "$output_fastq"
 }
 
