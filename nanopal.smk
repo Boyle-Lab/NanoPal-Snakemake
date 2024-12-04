@@ -349,7 +349,7 @@ rule mei_db:
     container:
         containers("blast")
     input:
-        container=containers("nanopal-binaries"),
+        container=containers("blast"),
         mei_fasta=mei_fasta,
     output:
         mei_db=multiext(scratch("mei_db/{mei}/{mei}"), ".ndb", ".nhr", ".nin", ".njs", ".not", ".nsq", ".ntf", ".nto"),
