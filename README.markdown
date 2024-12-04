@@ -92,6 +92,14 @@ If you only have one file for an entry you can optionally use a single string
 for the value for convenience, instead of having to wrap it up as
 a single-element list (the `minion` dataset in the example).
 
+Note that if you're running on Great Lakes and point to files on scratch you
+*must* use the `/scratch/…` form of the paths, and *not* `/gpfs/accounts/…`.
+`/scratch` on Great Lakes is just a symlink to `/gpfs/accounts`, so in theory it
+shouldn't matter, but in the Singularity config on Great Lakes ARC have
+explicitly configured Singularity to map `/scratch/…` into the containers but
+have *not* mapped `/gpfs/accounts/…`, so you need to use the `/scratch/…` form
+of the paths.
+
 ## Containers
 
 The pipeline will download its own containers to the directory specified in
@@ -125,10 +133,10 @@ Take a look at the individual scripts to see exactly what they're doing, but
 here are some examples to get you started.  To do a dry run and just print what
 Snakemake thinks it needs to do:
 
-    script          run config                        snakemake args
-    vvvvvv          vvvvvvvvvv                        vvvvvvvvvvvvvv
-    ./run-glakes.sh samples/real-data-test-gl.json    _all --cores=36 --dry-run
-    ./run-local.sh  samples/real-data-test-local.json _all --cores=12 --dry-run
+    script          run config                     snakemake args
+    vvvvvv          vvvvvvvvvv                     vvvvvvvvvvvvvv
+    ./run-glakes.sh runs/real-data-test-gl.json    _all --cores=36 --dry-run
+    ./run-local.sh  runs/real-data-test-local.json _all --cores=12 --dry-run
 
 Unfortunately you *do* need to pass `--cores` even for a dry run.  The reason is
 that some of the commands that get invoked depend in a non-trivial way on the
@@ -138,7 +146,7 @@ dry run look like it'll have to do more work that the real run actually will.
 
 To do a full run for real on a workstation (e.g. `clover`):
 
-    ./run-local.sh samples/real-data-test-local.json _all --cores=12 > snakemake.log
+    ./run-local.sh runs/real-data-test-local.json _all --cores=12 > snakemake.log
 
 Note that you'll probably want to do this in a `screen` or `tmux` session so it
 doesn't get killed if your wifi dies.
