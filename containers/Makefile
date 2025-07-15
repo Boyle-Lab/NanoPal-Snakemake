@@ -1,5 +1,7 @@
 .phony: all
 
+all: minimap2.sif palmer.sif nanopal-binaries.sif samtools.sif liger2liger.sif
+
 minimap2.sif: minimap2.def
 	singularity build --fakeroot $@ $<
 
