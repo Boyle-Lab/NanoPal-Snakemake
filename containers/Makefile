@@ -1,6 +1,6 @@
 .phony: all
 
-all: minimap2.sif palmer.sif nanopal-binaries.sif samtools.sif liger2liger.sif
+all: minimap2.sif palmer.sif nanopal-binaries.sif samtools.sif liger2liger.sif minimera.sif
 
 minimap2.sif: minimap2.def
 	singularity build --fakeroot $@ $<
@@ -12,6 +12,9 @@ nanopal-binaries.sif: nanopal-binaries.def
 	singularity build --fakeroot $@ $<
 
 samtools.sif: samtools.def
+	singularity build --fakeroot $@ $<
+
+minimera.sif: minimera.def minimera/minimera minimera/minimera.1
 	singularity build --fakeroot $@ $<
 
 liger2liger.zip:

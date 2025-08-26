@@ -5,6 +5,7 @@
         "minimap2": "minimap2.def",
         "nanopal-binaries": "nanopal-binaries.def",
         "palmer": "palmer.def",
-        "samtools": "samtools.def"
+        "samtools": "samtools.def",
+        "minimera": "minimera.def"
     }
 }

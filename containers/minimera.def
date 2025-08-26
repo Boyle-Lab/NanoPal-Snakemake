@@ -1,0 +1,23 @@
+Bootstrap: docker
+From: debian:bookworm-slim
+
+%files
+    ./minimera/minimera /minimera
+    ./minimera/minimera.1 /minimera.1
+
+%post
+    ln -s /minimera /usr/local/bin/
+    mkdir -p /usr/local/share/man/man1
+    ln -s /minimera.1 /usr/local/share/man/man1/
+#     apt-get update
+#     apt-get install -y --no-install-recommends bzip2
+#     tar --no-same-owner -jxvf minimap2-2.28_x64-linux.tar.bz2
+#     apt-get purge -y --auto-remove bzip2
+#     apt-get autoclean
+#     rm -rf /var/lib/apt/lists/*
+
+%runscript
+    exec minimera "$@"
+
+# %environment
+#     export PATH="/minimap2-2.28_x64-linux:$PATH"

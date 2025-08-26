@@ -130,31 +130,59 @@ rule detect_ligation_artifacts:
             "cp {params.output_dir}/batch_VS_index/batch_VS_index.chimeric_reads.txt {output.result}"
         )
 
-rule detect_foldback_chimeras:
+rule dump_alignments_for_minimera:
     log:
-        scratch("_logs/detect_foldback_chimeras/{id}.log"),
+        scratch("_logs/dump_alignments_for_minimera/{id}.log"),
     benchmark:
-        scratch("_benchmarks/detect_foldback_chimeras/{id}.tsv")
+        scratch("_benchmarks/dump_alignments_for_minimera/{id}.tsv")
     container:
-        containers("samtools")
+        containers("minimap2") # Hack because it has samtools and gawk
     input:
-        container=containers("samtools"),
-        script="scripts/detect-foldback-chimeras.sh",
+        container=containers("minimap2"),
+        script="scripts/dump-alignments-for-minimera.sh",
         bam=scratch("{id}/alignment/alignment.bam"),
     output:
-        result=scratch("{id}/detect_foldback_chimeras/foldback_chimeras.txt"),
-    params:
-        output_dir=scratch("{id}/detect_ligation_artifacts"),
-    threads: 24
+        result=scratch("{id}/dump_alignments_for_minimera/alignments.csv"),
+    threads: 1
     resources:
-        mem="128GB",
-        runtime="3h",
+        mem="4GB",
+        runtime="1h",
     shell:
         logged(
             "./{input.script} "
-            "  {threads}"
             "  {input.bam}"
-            "  {output.result}"
+            "> {output.result}"
+        )
+
+rule minimera:
+    log:
+        scratch("_logs/minimera/{id}.log"),
+    benchmark:
+        scratch("_benchmarks/minimera/{id}.tsv")
+    container:
+        containers("minimera")
+    input:
+        container=containers("minimera"),
+        fastq=scratch("{id}/input/batch.fastq"),
+        # alignments=scratch("{id}/dump_alignments_for_minimera/alignments.csv"),
+    output:
+        result_csv=scratch("{id}/minimera/foldbacks.csv"),
+        # result_bed=scratch("{id}/minimera/foldbacks.bed"),
+    params:
+        output_dir=scratch("{id}/minimera"),
+    threads: 18
+    resources:
+        mem="48GB",
+        runtime="3h",
+    shell:
+        logged(
+            "minimera "
+            "  {input.fastq}"
+            "  --threads {threads}"
+            "  --output {params.output_dir}"
+            "  --no-progress"
+            "  --no-plot-foldbacks"
+            "  --monotony-threshold 0.5"
         )
 
 rule alignment:
@@ -472,7 +500,7 @@ rule intersect:
         out_summary=scratch("{id}/{mei}/intersect/summary.final.txt"),
     threads: 2 # TODO
     resources:
-        mem="12GB",
+        mem="27GB",
         runtime="30m",
     shell:
         logged(
@@ -512,6 +540,7 @@ rule intersect_again:
         pp_mei=pp_mei,
         in_summary=scratch("{id}/{mei}/intersect/summary.final.txt"),
         revcomp_read_ids=scratch("{id}/find_revcomp_reads/RC.all.list"),
+        foldbacks=scratch("{id}/minimera/foldbacks.csv"),
     output:
         out_dir=directory(scratch("{id}/{mei}/intersect_again/")),
         out_summary=scratch("{id}/{mei}/intersect_again/summary.final.2.txt"),
@@ -529,6 +558,7 @@ rule intersect_again:
             "  {input.pp_mei}"
             "  {input.in_summary}"
             "  {input.revcomp_read_ids}"
+            "  {input.foldbacks}"
             "  {wildcards.mei}"
             "  {output.out_dir}"
             "  {output.out_summary}"
@@ -551,9 +581,13 @@ rule output_results:
     output:
         csv=scratch("{id}/{mei}/output_results/result.csv"),
         log=scratch("{id}/{mei}/output_results/result.txt"),
-    threads: 2
+        bed=scratch("{id}/{mei}/output_results/nanopal_calls-all-{id}-{mei}.bed"),
+        bed_multi=scratch("{id}/{mei}/output_results/nanopal_calls-multiple_support-{id}-{mei}.bed"),
+    params:
+        out_dir=scratch("{id}/{mei}/output_results/")
+    threads: 16
     resources:
-        mem="6GB",
+        mem="32GB",
         runtime="3h",
     shell:
         logged(
@@ -563,8 +597,12 @@ rule output_results:
             "  {input.bam}"
             "  {input.potential_meis}"
             "  {input.result_log}"
+            "  {threads}"
+            "  {params.out_dir}"
             "  {output.csv}"
             "  {output.log}"
+            "  {output.bed}"
+            "  {output.bed_multi}"
         )
 
 rule collect_results:
@@ -580,14 +618,27 @@ rule collect_results:
             id=IDS,
             mei=config["mobile_elements"],
         ),
+        result_beds=expand(
+            scratch("{id}/{mei}/output_results/nanopal_calls-all-{id}-{mei}.bed"),
+            id=IDS,
+            mei=config["mobile_elements"],
+        ),
     output:
-        csv=scratch("collect-results/results.csv"),
+        out_csv=scratch("collect-results/results.csv"),
+    params:
+        out_dir=scratch("collect-results/"),
+        result_dirs=expand(
+            scratch("{id}/{mei}/output_results/"),
+            id=IDS,
+            mei=config["mobile_elements"],
+        ),
     threads: 1
     shell:
         logged(
             "./{input.script}"
-            "  {output.csv}"
-            "  {input.result_csvs}"
+            "  {params.out_dir}"
+            "  {output.out_csv}"
+            "  {params.result_dirs}"
         )
 
 
@@ -664,22 +715,18 @@ rule _ligation_artifacts:
             id=IDS,
         ),
 
-rule _chimeras:
+rule _minimera:
     localrule: True
     input:
-        expand(
-            scratch("{id}/detect_foldback_chimeras/foldback_chimeras.txt"),
-            id=IDS,
-        ),
+        expand(scratch("{id}/minimera/foldbacks.csv"), id=IDS),
+        # expand(scratch("{id}/minimera/foldbacks.bed"), id=IDS),
 
 rule _results:
     localrule: True
     input:
         scratch("collect-results/results.csv"),
-        expand(
-            scratch("{id}/detect_ligation_artifacts/ligation_artifacts.txt"),
-            id=IDS
-        ),
+        rules._minimera.input,
+        rules._ligation_artifacts.input,
 
 rule _all:
     default_target: True

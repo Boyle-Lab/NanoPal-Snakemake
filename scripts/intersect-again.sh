@@ -13,6 +13,8 @@ in_summary="$1" # summary.final.txt
 shift
 revcomp_read_ids="$1" # RC.all.list
 shift
+foldbacks="$1" # foldbacks.csv
+shift
 mei="$1" # LINE
 shift
 
@@ -75,7 +77,21 @@ join -1 1 -2 1 \
      --check-order \
      <(sort -k1 "$in_summary") \
      <(sort -k1 "$revcomp_read_ids" | sed -e 's/$/ 1/') \
-     > "$out_summary"
+     > "$out_summary".unfiltered
+
+# TODO disabled for now, reenable later.
+# Filter out foldback chimeric reads before moving on
+# awk -F, 'NR > 1 && $3 == "foldback" { print $1 }' "$foldbacks" | sort \
+#     > foldback_read_ids
+
+# join -v 1 \
+#     --check-order \
+#     "$out_summary".unfiltered \
+#     foldback_read_ids \
+#     > "$out_summary"
+
+# TODO reenable foldback/LA filtering when ready.
+cp "$out_summary".unfiltered "$out_summary"
 
 # TODO Refactor the rest of this into separate chunks.
 

@@ -26,9 +26,17 @@ function retrieve_from_tar {
 function retrieve_from_bam {
     bam="$1"
 
+    # Only keep reads that have a qscore at or above the Nanopore default (9).
+    #
+    # Preserve the headers in case of older data, because if the BAM is aligned
+    # then samtools fastq wants the header to parse the aligned reads.
+    #
     # Copy the tags from Dorado, see https://github.com/nanoporetech/dorado/blob/master/documentation/SAM.md
-    samtools fastq "$bam" \
-      -T MM,pi,sp,ns,ts,RG,qs,ts,ns,mx,ch,rn,st,du,fn,sm,sd,sv,dx,pi,sp,pt,bh,MN \
+    samtools view "$bam" \
+        --with-header \
+        --expr '[qs] >= 9' \
+    | samtools fastq \
+        -T MM,pi,sp,ns,ts,RG,qs,ts,ns,mx,ch,rn,st,du,fn,sm,sd,sv,dx,pi,sp,pt,bh,MN \
     >> "$output_fastq"
 }
 

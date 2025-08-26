@@ -3,13 +3,17 @@
 set -euo pipefail
 set -x
 
-dataset_id="$1"
-mei="$2" # LINE
-bam="$3" # alignment.bam
-potential_meis="$4" # potential.clustered.txt.fi
-result_log="$5" # result-log.txt
-out_csv="$6"
-out_log="$7"
+dataset_id="$1"; shift
+mei="$1"; shift # LINE
+bam="$1"; shift # alignment.bam
+potential_meis="$1"; shift # potential.clustered.txt.fi
+result_log="$1"; shift # result-log.txt
+threads="$1"; shift
+out_dir="$1"; shift
+out_csv="$1"; shift
+out_log="$1"; shift
+out_bed="$1"; shift
+out_bed_multi="$1"; shift
 
 # Compute statistics ----------------------------------------------------------
 
@@ -29,21 +33,36 @@ enrichment=$(awk 'NR == 4 {print $2}' "$result_log")
 potential_mei_count=$(awk 'BEGIN {n=0}           {n+=1} END {print n}' "$potential_meis")
 multiple_support=$(awk    'BEGIN {n=0} $5+$6 > 1 {n+=1} END {print n}' "$potential_meis")
 
+# These statistics take a while to compute.  Unfortunately trying to parallelize
+# it with --threads to samtools and/or seqkit doesn't really help all that much.
+# But we can at least parallelize the individual stat computations.
+
 # Get some basic read counts/stats from the BAM.
-total_reads=$(samtools    view -c        "$bam")
-percent_mapped_reads=$(samtools   view -c -F 0x4 "$bam" | awk -v n="$total_reads" '{print 100.0 * $1/n}')
-percent_unmapped_reads=$(samtools view -c -f 0x4 "$bam" | awk -v n="$total_reads" '{print 100.0 * $1/n}')
-percent_low_mapq=$(samtools view -c -q 10 "$bam" | awk -v n="$total_reads" '{print 100.0 * (1 - ($1/n))}')
+total_reads=$(samtools view --threads "$threads" -c "$bam") # need to compute first to divide by in the next stats
+samtools view --threads 2 -c -F 0x4 "$bam" | awk -v n="$total_reads" '{print 100.0 * $1/n}'         > "$out_dir"/stat_percent_mapped_reads &
+samtools view --threads 2 -c -f 0x4 "$bam" | awk -v n="$total_reads" '{print 100.0 * $1/n}'         > "$out_dir"/stat_percent_unmapped_reads &
+samtools view --threads 2 -c -q 10  "$bam" | awk -v n="$total_reads" '{print 100.0 * (1 - ($1/n))}' > "$out_dir"/stat_percent_low_mapq &
 
 # Get some stats about the unmapped reads. seqkit stats output looks like:
 #
 #     file    format  type    num_seqs        sum_len min_len avg_len max_len Q1      Q2      Q3      sum_gap N50     Q20(%)  Q30(%)  GC(%)
 #     data…
 
-mapped_average_length=$(samtools   fastq -F 0x4 "$bam" | seqkit stats -a -T | awk 'NR == 2 {print  $7}')
-mapped_n50=$(samtools              fastq -F 0x4 "$bam" | seqkit stats -a -T | awk 'NR == 2 {print $13}')
-unmapped_average_length=$(samtools fastq -f 0x4 "$bam" | seqkit stats -a -T | awk 'NR == 2 {print  $7}')
-unmapped_n50=$(samtools            fastq -f 0x4 "$bam" | seqkit stats -a -T | awk 'NR == 2 {print $13}')
+samtools fastq -F 0x4 "$bam" --threads 1 | seqkit stats -a -T --threads 1 | awk 'NR == 2 {print  $7}' > "$out_dir"/stat_mapped_average_length &
+samtools fastq -F 0x4 "$bam" --threads 1 | seqkit stats -a -T --threads 1 | awk 'NR == 2 {print $13}' > "$out_dir"/stat_mapped_n50 &
+samtools fastq -f 0x4 "$bam" --threads 1 | seqkit stats -a -T --threads 1 | awk 'NR == 2 {print  $7}' > "$out_dir"/stat_unmapped_average_length &
+samtools fastq -f 0x4 "$bam" --threads 1 | seqkit stats -a -T --threads 1 | awk 'NR == 2 {print $13}' > "$out_dir"/stat_unmapped_n50 &
+
+wait
+
+percent_mapped_reads=$(cat   "$out_dir"/stat_percent_mapped_reads)
+percent_unmapped_reads=$(cat "$out_dir"/stat_percent_unmapped_reads)
+percent_low_mapq=$(cat       "$out_dir"/stat_percent_low_mapq)
+
+mapped_average_length=$(cat   "$out_dir"/stat_mapped_average_length)
+mapped_n50=$(cat              "$out_dir"/stat_mapped_n50)
+unmapped_average_length=$(cat "$out_dir"/stat_unmapped_average_length)
+unmapped_n50=$(cat            "$out_dir"/stat_unmapped_n50)
 
 # Output CSV ------------------------------------------------------------------
 
@@ -54,3 +73,18 @@ unmapped_n50=$(samtools            fastq -f 0x4 "$bam" | seqkit stats -a -T | aw
 } > "$out_csv"
 
 cp "$result_log" "$out_log"
+
+# Output BEDs -----------------------------------------------------------------
+
+awk '
+  BEGIN {
+    FS="\t"
+    OFS="\t"
+  }
+  {
+    gsub("/", "", $8)
+    print $1, $2, $3, $4 " " $8
+  }
+' "$potential_meis" > "$out_bed"
+
+awk '$4 > 1' "$out_bed" > "$out_bed_multi"

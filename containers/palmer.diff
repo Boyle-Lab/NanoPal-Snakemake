@@ -11,3 +11,18 @@ index 3bc7057..6801a3b 100644
      
      char *syst = new char[sys.length()+1];
      strcpy(syst, sys.c_str());
+diff --git a/scp/7_FP_ex.cpp b/scp/7_FP_ex.cpp
+index ed3f46b..8af6b6b 100755
+--- a/scp/7_FP_ex.cpp
++++ b/scp/7_FP_ex.cpp
+@@ -642,6 +642,9 @@ int fp_ex(string WD_dir, string fasta, string chr, string t, int tsd_index){
+             //file20.close();
+             file21.close();
+             file21.clear();
++
++            // Delete the intermediate file to avoid exhausting inodes.
++            remove(syst_ref_junc_file);
+         }
+
+         for(int w=0;w!=line_tsd;++w){
+
