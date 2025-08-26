@@ -2,6 +2,7 @@ testresults
 containers/*.sif
 tmp/
 containers/nanopal-binaries/bin
+containers/minimera
 containers/*.tar.gz
 containers/*.zip
 runs/*.json
