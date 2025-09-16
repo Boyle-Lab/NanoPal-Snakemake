@@ -541,6 +541,7 @@ rule intersect_again:
         in_summary=scratch("{id}/{mei}/intersect/summary.final.txt"),
         revcomp_read_ids=scratch("{id}/find_revcomp_reads/RC.all.list"),
         foldbacks=scratch("{id}/minimera/foldbacks.csv"),
+        ligation_artifacts=scratch("{id}/detect_ligation_artifacts/ligation_artifacts.txt"),
     output:
         out_dir=directory(scratch("{id}/{mei}/intersect_again/")),
         out_summary=scratch("{id}/{mei}/intersect_again/summary.final.2.txt"),
@@ -559,6 +560,7 @@ rule intersect_again:
             "  {input.in_summary}"
             "  {input.revcomp_read_ids}"
             "  {input.foldbacks}"
+            "  {input.ligation_artifacts}"
             "  {wildcards.mei}"
             "  {output.out_dir}"
             "  {output.out_summary}"
