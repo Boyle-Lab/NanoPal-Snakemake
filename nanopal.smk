@@ -35,16 +35,6 @@ def logged(*shell_commands):
 
 
 # Rules -----------------------------------------------------------------------
-
-rule container:
-    localrule: True
-    output:
-        containers("{name}"),
-    params:
-        source=lambda wc: config["containers"][wc.name],
-    shell:
-        "singularity pull {output} {params.source}"
-
 def dataset_input_files(wc):
     paths = config["datasets"][wc.id]
     if isinstance(paths, str):
@@ -645,12 +635,6 @@ rule collect_results:
 
 
 # PHONY -----------------------------------------------------------------------
-
-rule _containers:
-    localrule: True
-    input:
-        expand(containers("{name}"), name=config["containers"].keys()),
-
 rule _input:
     localrule: True
     input:
