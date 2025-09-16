@@ -31,4 +31,6 @@ liger2liger.tar.gz: liger2liger.zip
 liger2liger.sif: liger2liger.def minimap2.sif liger2liger.tar.gz autoconf-2.69.tar.gz liger2liger.sh
 	singularity build --fakeroot $@ $<
 
+blast.sif:
+	singularity pull docker://staphb/blast:2.15.0
 
