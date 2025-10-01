@@ -294,7 +294,26 @@ intersect capture.loci.potential.process "${pp_mei}" \
 
 cp inter.potential.txt input_cluster.txt
 cluster
-cp clustered.txt potential.clustered.txt.fi
+cp clustered.txt potential.clustered.txt.fi.beforededupe
+
+# For very short reads, it's possible that we have something that looks like
+# signal on both sides.  When this happens, the clustering C++ program will
+# count it as 2x read support, and the resulting list will have duplicate read
+# IDs, e.g.:
+#
+#     chr5    84010513        84010706        2       1       1       +        4cf0b5d6-ff89-4c03-9d3e-ab6c1e93a581/ 4cf0b5d6-ff89-4c03-9d3e-ab6c1e93a581
+#
+# We want to deduplicate this list so we don't get spurious "multiple" read
+# support in our results when we actually only have a single read supporting an
+# event.
+
+cat <<EOF | python3 - > potential.clustered.txt.fi
+with open('potential.clustered.txt.fi.beforededupe') as f:
+    for line in f:
+        chr, start, end, n, n5, n3, strand, ids = line.split('\t')
+        ids = set(ids.strip().replace('/', '').split())
+        print(f'{chr}\t{start}\t{end}\t{len(ids)}\t{strand}\t{" ".join(ids)}')
+EOF
 
 {
     echo "There are ${SIGNAL1} reads capturing putative signals on one end."
@@ -320,7 +339,7 @@ cp clustered.txt potential.clustered.txt.fi
             wc -l r.l1pa.txt.fi
             echo "Number of other reference L1 and the file (number of supporting reads + coordinate)"
             wc -l r.l1.txt.fi
-            echo "Number of potential Nanopore-specific non-reference L1Hs and the file (coordinate + number of supporting reads + number of left supporting reads + number of right supporting reads + strand)"
+            echo "Number of potential Nanopore-specific non-reference L1Hs and the file (coordinate + number of supporting reads + strand)"
             wc -l potential.clustered.txt.fi
             ;;
         AluYa | AluYb)
@@ -343,7 +362,7 @@ cp clustered.txt potential.clustered.txt.fi
             wc -l r.AluY.txt.fi
             echo "Number of other reference Alu and the file (number of supporting reads + coordinate)"
             wc -l r.Alu.txt.fi
-            echo "Number of potential specific non-reference AluY and the file (coordinate + number of supporting reads + number of left supporting reads + number of right supporting reads + strand)"
+            echo "Number of potential specific non-reference AluY and the file (coordinate + number of supporting reads + strand)"
             wc -l potential.clustered.txt.fi
             ;;
         SVA_E | SVA_F)
@@ -366,7 +385,7 @@ cp clustered.txt potential.clustered.txt.fi
             wc -l r.SVA_D.txt.fi
             echo "Number of other reference SVA and the file (number of supporting reads + coordinate)"
             wc -l r.SVAother.txt.fi
-            echo "Number of potential specific non-reference SVA and the file (coordinate + number of supporting reads + number of left supporting reads + number of right supporting reads + strand)"
+            echo "Number of potential specific non-reference SVA and the file (coordinate + number of supporting reads + strand)"
             wc -l potential.clustered.txt.fi
             ;;
         *)

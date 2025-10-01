@@ -7,7 +7,7 @@ From: staphb/samtools:1.10
     ./palmer.diff /palmer.diff
 
 %post
-    export PALMER_VER="d09bd1061822d437f6974c14fd6ac3407d364396"
+    export PALMER_VER="ed90190625e7509fa0ca641940600748f9198db9"
     export BLAST_VER="2.12.0"
     apt-get update
     apt-get install -y --no-install-recommends wget ca-certificates libgomp1 unzip build-essential strace
@@ -29,7 +29,7 @@ From: staphb/samtools:1.10
     exec /palmer/PALMER "$@"
 
 %environment
-    export PALMER_VER="d09bd1061822d437f6974c14fd6ac3407d364396"
+    export PALMER_VER="ed90190625e7509fa0ca641940600748f9198db9"
     export BLAST_VER="2.12.0"
     export BLAST_USAGE_REPORT=0
     export LC_ALL=C

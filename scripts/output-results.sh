@@ -30,8 +30,8 @@ fail=$(awk       'NR == 3 {print $3}' "$result_log")
 enrichment=$(awk 'NR == 4 {print $2}' "$result_log")
 
 # Count potential events with/without multiple (≥2) read support.
-potential_mei_count=$(awk 'BEGIN {n=0}           {n+=1} END {print n}' "$potential_meis")
-multiple_support=$(awk    'BEGIN {n=0} $5+$6 > 1 {n+=1} END {print n}' "$potential_meis")
+potential_mei_count=$(awk 'BEGIN {n=0}        {n+=1} END {print n}' "$potential_meis")
+multiple_support=$(awk    'BEGIN {n=0} $4 > 1 {n+=1} END {print n}' "$potential_meis")
 
 # These statistics take a while to compute.  Unfortunately trying to parallelize
 # it with --threads to samtools and/or seqkit doesn't really help all that much.
@@ -82,8 +82,7 @@ awk '
     OFS="\t"
   }
   {
-    gsub("/", "", $8)
-    print $1, $2, $3, $4 " " $8
+    print $1, $2, $3, $4 " " $6
   }
 ' "$potential_meis" > "$out_bed"
 

@@ -5,7 +5,7 @@ all: minimap2.sif palmer.sif nanopal-binaries.sif samtools.sif liger2liger.sif m
 minimap2.sif: minimap2.def
 	singularity build --fakeroot $@ $<
 
-palmer.sif: palmer.def
+palmer.sif: palmer.def palmer.diff
 	singularity build --fakeroot $@ $<
 
 nanopal-binaries.sif: nanopal-binaries.def

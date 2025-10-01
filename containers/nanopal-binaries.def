@@ -9,6 +9,10 @@ From: debian:bookworm-slim
     ./nanopal-binaries/bin/intersect    /nanopal-binaries/intersect
     ./nanopal-binaries/bin/collapse     /nanopal-binaries/collapse
 
+%post
+    apt-get update
+    apt-get install -y --no-install-recommends python3
+
 %runscript
     echo "Nanopal binaries are in /nanopal-binaries" && false
 
