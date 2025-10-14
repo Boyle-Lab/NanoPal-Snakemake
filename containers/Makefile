@@ -17,6 +17,9 @@ samtools.sif: samtools.def
 minimera.sif: minimera.def minimera/minimera minimera/minimera.1
 	singularity build --fakeroot $@ $<
 
+delulu.sif: delulu.def delulu/delulu
+	singularity build --fakeroot $@ $<
+
 liger2liger.zip:
 	wget https://github.com/rlorigro/Liger2LiGer/archive/refs/heads/main.zip -O liger2liger.zip
 

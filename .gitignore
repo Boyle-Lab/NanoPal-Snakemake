@@ -3,6 +3,7 @@ containers/*.sif
 tmp/
 containers/nanopal-binaries/bin
 containers/minimera
+containers/delulu
 containers/*.tar.gz
 containers/*.zip
 runs/*.json

@@ -6,8 +6,8 @@ index 3bc7057..6801a3b 100644
      //std::cin.tie(0);
      
      string sys;
--    sys="samtools view -q 10 -F 0x100 -F 0x200  -F 0x400 -T "+fasta+" "+input_bam+" "+chr+":"+start+"-"+end+" |sed -e 's/[ ][ ]*/_/g'  > "+working_dir+"region.sam";
-+    sys="samtools view -q 10 -F 0x100 -F 0x200 -F 0x400 -F 0x800 -T "+fasta+" "+input_bam+" "+chr+":"+start+"-"+end+" |sed -e 's/[ ][ ]*/_/g'  > "+working_dir+"region.sam";
+-    sys="samtools view -q "+MAPQ+" -F 0x100 -F 0x200  -F 0x400 -T "+fasta+" "+input_bam+" "+chr+":"+start+"-"+end+" |sed -e 's/[ ][ ]*/_/g'  > "+working_dir+"region.sam";
++    sys="samtools view -q "+MAPQ+" -F 0x100 -F 0x200 -F 0x400 -F 0x800 -T "+fasta+" "+input_bam+" "+chr+":"+start+"-"+end+" |sed -e 's/[ ][ ]*/_/g'  > "+working_dir+"region.sam";
      
      char *syst = new char[sys.length()+1];
      strcpy(syst, sys.c_str());
@@ -19,10 +19,10 @@ index ed3f46b..8af6b6b 100755
              //file20.close();
              file21.close();
              file21.clear();
-+
++            
 +            // Delete the intermediate file to avoid exhausting inodes.
 +            remove(syst_ref_junc_file);
          }
-
+         
          for(int w=0;w!=line_tsd;++w){
 

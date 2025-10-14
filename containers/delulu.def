@@ -1,0 +1,11 @@
+Bootstrap: docker
+From: debian:bookworm-slim
+
+%files
+    ./delulu/delulu /delulu
+
+%post
+    ln -s /delulu /usr/local/bin/
+
+%runscript
+    exec delulu "$@"
