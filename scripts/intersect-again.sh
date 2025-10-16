@@ -17,6 +17,8 @@ foldbacks="$1" # foldbacks.csv
 shift
 ligation_artifacts="$1" # ligation_artifacts.txt
 shift
+hallucination="$1" # hallucination.csv
+shift
 mei="$1" # LINE
 shift
 
@@ -101,7 +103,21 @@ join -v 1 \
     --check-order \
     "$out_summary".filtered.foldbacks \
     ligation_artifact_read_ids \
-    > "$out_summary"
+    > "$out_summary".filtered.foldbacks.ligations
+
+# Filter out hallucinations
+awk -F, 'NR > 1 && $3 >= 10 { print $1 }' "$hallucination" \
+    | sort \
+    > hallucination_read_ids
+
+
+join -v 1 \
+    --check-order \
+    "$out_summary".filtered.foldbacks.ligations \
+    hallucination_read_ids \
+    > "$out_summary".filtered.foldbacks.ligations.hallucinations
+
+cp "$out_summary".filtered.foldbacks.ligations.hallucinations "$out_summary"
 
 # TODO Refactor the rest of this into separate chunks.
 
