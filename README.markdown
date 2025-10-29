@@ -153,9 +153,9 @@ doesn't get killed if your wifi dies.
 
 When running on the cluster you're not supposed to do any real work on the login
 nodes, so you should use Slurm to invoke the `./run-glakes.sh` call on a Slurm
-worker node.  The `run.sbat` file does that, so copy and edit that to point at
-your run config and use `sbatch my-run.sbat` to kick off the Snakemake
-controller, which will then fan out the tasks to other nodes.
+worker node.  The `run.sbat` file does that, so you can use `sbatch run.sbat
+runs/foo.json _all` to kick off the Snakemake controller with the given config
+and Snakemake target, which will then fan out the tasks to other nodes.
 
 You can monitor the progress by watching the log file with:
 
