@@ -184,7 +184,7 @@ rule minimera:
     threads: 18
     resources:
         mem="48GB",
-        runtime="3h",
+        runtime="4h",
     shell:
         logged(
             "minimera "
@@ -213,10 +213,10 @@ rule alignment:
     params:
         output_dir=scratch("{id}/alignment"),
         samtools_threads=lambda wc, threads: min(16, threads),
-    threads: 36
+    threads: 24
     resources:
-        mem="128GB",
-        runtime="3h",
+        mem="64GB",
+        runtime="4h",
     shell:
         logged(
             "rm -f {output.bam}",
