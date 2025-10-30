@@ -430,10 +430,10 @@ rule find_on_target:
     params:
         mei_cut_site=mei_cut_site,
         blast_threads=lambda wc, threads: max(threads-2, 1),
-    threads: 10
+    threads: 12
     resources:
         mem="24GB",
-        runtime="1h",
+        runtime="4h",
     shell:
         logged(
             "./{input.script}"
