@@ -12,6 +12,7 @@ BATCH_ID = config["batch_id"]
 EXCLUSIONS = config["exclusions"]
 SCRATCH_PATH = config["scratch_path"]
 CONTAINER_PATH = config["container_path"]
+CONTAINERS = config["containers"]
 
 
 wildcard_constraints:
@@ -27,7 +28,11 @@ def scratch(path):
     return os.path.join(SCRATCH_PATH, BATCH_ID, path)
 
 def containers(name):
-    return os.path.join(CONTAINER_PATH, f"{name}.sif")
+    target = CONTAINERS[name]
+    if target.endswith(".sif"):
+        return os.path.join(CONTAINER_PATH, target)
+    else:
+        return os.path.join(CONTAINER_PATH, f"{name}.sif")
 
 def logged(*shell_commands):
     commands = "\n".join(('date',) + shell_commands + ('date',))
@@ -47,7 +52,6 @@ rule input:
     container:
         containers("samtools")
     input:
-        container=containers("samtools"),
         script="scripts/retrieve-input.sh",
         input_files=dataset_input_files,
     output:
@@ -76,7 +80,6 @@ rule index_reference:
     container:
         containers("minimap2")
     input:
-        container=containers("minimap2"),
         reference=config["reference"],
     output:
         scratch("reference/index.mmi"),
@@ -102,7 +105,6 @@ rule detect_ligation_artifacts:
     container:
         containers("liger2liger")
     input:
-        container=containers("liger2liger"),
         fastq=scratch("{id}/input/batch.fastq"),
         index=scratch("reference/index.mmi"),
     output:
@@ -128,7 +130,6 @@ rule detect_hallucination:
     container:
         containers("delulu")
     input:
-        container=containers("delulu"),
         fastq=scratch("{id}/input/batch.fastq"),
     output:
         result=scratch("{id}/detect_hallucination/hallucination.csv"),
@@ -141,29 +142,6 @@ rule detect_hallucination:
             "delulu --threads {threads} {input.fastq} > {output.result}"
         )
 
-rule dump_alignments_for_minimera:
-    log:
-        scratch("_logs/dump_alignments_for_minimera/{id}.log"),
-    benchmark:
-        scratch("_benchmarks/dump_alignments_for_minimera/{id}.tsv")
-    container:
-        containers("minimap2") # Hack because it has samtools and gawk
-    input:
-        container=containers("minimap2"),
-        script="scripts/dump-alignments-for-minimera.sh",
-        bam=scratch("{id}/alignment/alignment.bam"),
-    output:
-        result=scratch("{id}/dump_alignments_for_minimera/alignments.csv"),
-    threads: 1
-    resources:
-        mem="4GB",
-        runtime="1h",
-    shell:
-        logged(
-            "./{input.script} "
-            "  {input.bam}"
-            "> {output.result}"
-        )
 
 rule minimera:
     log:
@@ -173,12 +151,9 @@ rule minimera:
     container:
         containers("minimera")
     input:
-        container=containers("minimera"),
         fastq=scratch("{id}/input/batch.fastq"),
-        # alignments=scratch("{id}/dump_alignments_for_minimera/alignments.csv"),
     output:
         result_csv=scratch("{id}/minimera/foldbacks.csv"),
-        # result_bed=scratch("{id}/minimera/foldbacks.bed"),
     params:
         output_dir=scratch("{id}/minimera"),
     threads: 18
@@ -204,7 +179,6 @@ rule alignment:
     container:
         containers("minimap2")
     input:
-        container=containers("minimap2"),
         fastq=scratch("{id}/input/batch.fastq"),
         index=scratch("reference/index.mmi"),
     output:
@@ -242,7 +216,6 @@ rule find_revcomp_reads:
     container:
         containers("samtools")
     input:
-        container=containers("samtools"),
         bam=scratch("{id}/alignment/alignment.bam"),
     output:
         revcomp_read_ids=scratch("{id}/find_revcomp_reads/RC.all.list"),
@@ -275,7 +248,6 @@ rule palmer:
     container:
         containers("palmer")
     input:
-        container=containers("palmer"),
         reference=config["reference"],
         bam=scratch("{id}/alignment/alignment.bam"),
     output:
@@ -321,7 +293,6 @@ rule gather_matches:
     container:
         containers("samtools")
     input:
-        container=containers("samtools"),
         script="scripts/gather-palmer-results.sh",
         palmer_blasts=expand(
             scratch("{{id}}/{{mei}}/palmer/{chromosome}/collected_blastn_refine.txt"),
@@ -353,7 +324,6 @@ rule parse_cigar:
     container:
         containers("nanopal-binaries")
     input:
-        container=containers("nanopal-binaries"),
         cigar_matches=scratch("{id}/{mei}/gather_matches/mapped.info.txt"),
     output:
         cigar_results=scratch("{id}/{mei}/parse_cigar/cigar_results.all.txt"),
@@ -388,7 +358,6 @@ rule mei_db:
     container:
         containers("blast")
     input:
-        container=containers("blast"),
         mei_fasta=mei_fasta,
     output:
         mei_db=multiext(scratch("mei_db/{mei}/{mei}"), ".ndb", ".nhr", ".nin", ".njs", ".not", ".nsq", ".ntf", ".nto"),
@@ -421,7 +390,6 @@ rule find_on_target:
     container:
         containers("blast")
     input:
-        container=containers("blast"),
         script="scripts/blast-reads.sh",
         mei_db=scratch("mei_db/{mei}/{mei}"),
         reads_fasta=scratch("{id}/input/batch.fasta"),
@@ -502,7 +470,6 @@ rule intersect:
         containers("nanopal-binaries")
     input:
         script="scripts/intersect.sh",
-        container=containers("nanopal-binaries"),
         palmer_reads=scratch("{id}/{mei}/palmer_on_target/read.all.palmer.final.txt"),
         ref_mei=ref_mei,
         orig_mei=orig_mei,
@@ -546,7 +513,6 @@ rule intersect_again:
         containers("nanopal-binaries")
     input:
         script="scripts/intersect-again.sh",
-        container=containers("nanopal-binaries"),
         ref_mei=ref_mei,
         pp_mei=pp_mei,
         in_summary=scratch("{id}/{mei}/intersect/summary.final.txt"),
@@ -589,7 +555,6 @@ rule output_results:
         containers("samtools")
     input:
         script="scripts/output-results.sh",
-        container=containers("nanopal-binaries"),
         result_log=scratch("{id}/{mei}/intersect_again/result-log.txt"),
         potential_meis=scratch("{id}/{mei}/intersect_again/potential.clustered.txt.fi"),
         bam=scratch("{id}/alignment/alignment.bam"),
