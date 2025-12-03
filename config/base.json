@@ -6,7 +6,7 @@
         "nanopal-binaries": "nanopal-binaries.def",
         "palmer": "palmer.def",
         "samtools": "samtools.def",
-        "minimera": "minimera-0.2.1.sif",
+        "minimera": "minimera-v0.2.1.sif",
         "delulu": "delulu.def"
     }
 }

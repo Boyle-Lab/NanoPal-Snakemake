@@ -42,7 +42,7 @@ A single run config here looks something like this:
     "exclusions": "GM12878",
     "reference":      "/scratch/apboyle_root/apboyle0/slosh/nanopal-snakemake-test-runs/ref/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna",
     "scratch_path":   "/scratch/apboyle_root/apboyle0/slosh/nanopal-snakemake-test-runs/scratch",
-    "container_path": "/scratch/apboyle_root/apboyle0/slosh/nanopal-snakemake-test-runs/containers",
+    "container_path": "/nfs/turbo/boylelab/slosh/nanopal-containers",
     "datasets": {
         "p2-acq1": ["/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240606_1417_P2S-01935-B_PAW86158_158598d3/57b768b9ec81290d2b070df0f53667e32169b91c.sorted.bam"],
         "p2-acq2": ["/nfs/turbo/boylelab/nanopore_data/MEI/LINE/20240529_1010_P2S-01935-A_PAK58332_285f9616/c05f7e73c663028fe6c54432fd8ec97f675e48b2.sorted.bam",
