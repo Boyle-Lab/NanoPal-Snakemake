@@ -122,27 +122,6 @@ rule detect_ligation_artifacts:
             "cp {params.output_dir}/batch_VS_index/batch_VS_index.chimeric_reads.txt {output.result}"
         )
 
-rule detect_hallucination:
-    log:
-        scratch("_logs/detect_hallucination/{id}.log"),
-    benchmark:
-        scratch("_benchmarks/detect_hallucination/{id}.tsv")
-    container:
-        containers("delulu")
-    input:
-        fastq=scratch("{id}/input/batch.fastq"),
-    output:
-        result=scratch("{id}/detect_hallucination/hallucination.csv"),
-    threads: 6
-    resources:
-        mem="12GB",
-        runtime="1h",
-    shell:
-        logged(
-            "delulu --threads {threads} {input.fastq} > {output.result}"
-        )
-
-
 rule minimera:
     log:
         scratch("_logs/minimera/{id}.log"),
@@ -519,7 +498,6 @@ rule intersect_again:
         revcomp_read_ids=scratch("{id}/find_revcomp_reads/RC.all.list"),
         foldbacks=scratch("{id}/minimera/foldbacks.csv"),
         ligation_artifacts=scratch("{id}/detect_ligation_artifacts/ligation_artifacts.txt"),
-        hallucination=scratch("{id}/detect_hallucination/hallucination.csv"),
     output:
         out_dir=directory(scratch("{id}/{mei}/intersect_again/")),
         out_summary=scratch("{id}/{mei}/intersect_again/summary.final.2.txt"),
@@ -539,7 +517,6 @@ rule intersect_again:
             "  {input.revcomp_read_ids}"
             "  {input.foldbacks}"
             "  {input.ligation_artifacts}"
-            "  {input.hallucination}"
             "  {wildcards.mei}"
             "  {output.out_dir}"
             "  {output.out_summary}"
@@ -686,14 +663,6 @@ rule _ligation_artifacts:
     input:
         expand(
             scratch("{id}/detect_ligation_artifacts/ligation_artifacts.txt"),
-            id=IDS,
-        ),
-
-rule _hallucination:
-    localrule: True
-    input:
-        expand(
-            scratch("{id}/detect_hallucination/hallucination.txt"),
             id=IDS,
         ),
 

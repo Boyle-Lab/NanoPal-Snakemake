@@ -17,8 +17,6 @@ foldbacks="$1" # foldbacks.csv
 shift
 ligation_artifacts="$1" # ligation_artifacts.txt
 shift
-hallucination="$1" # hallucination.csv
-shift
 mei="$1" # LINE
 shift
 
@@ -28,6 +26,8 @@ out_summary="$1" # summary.final.2.txt
 shift
 out_result_log="$1" # formerly stdout
 shift
+
+echo "Processing $dataset_id"
 
 mkdir -p "$out_dir"
 cd "$out_dir"
@@ -84,6 +84,20 @@ join -1 1 -2 1 \
      > "$out_summary".unfiltered
 
 # Filter out foldback chimeric reads
+
+# Minimera CSV fields:
+#
+#     1  read-id
+#     2  read-length
+#     3  classification
+#     4  monotony
+#     5  foldback-point
+#     6  mean-qscore
+#     7  llqr
+#     8  llqr-start
+#     9  llqr-end
+#    10  processing-time-microsec
+
 awk -F, 'NR > 1 && $3 == "foldback" { print $1 }' "$foldbacks" \
     | sort \
     > foldback_read_ids
@@ -105,11 +119,14 @@ join -v 1 \
     ligation_artifact_read_ids \
     > "$out_summary".filtered.foldbacks.ligations
 
-# Filter out hallucinations
-awk -F, 'NR > 1 && $3 >= 10 { print $1 }' "$hallucination" \
+# Filter out large hallucinations
+hallucination_threshold=50
+
+awk -v threshold="$hallucination_threshold" -F, \
+    'NR > 1 && $7 >= threshold { print $1 }' \
+    "$foldbacks" \
     | sort \
     > hallucination_read_ids
-
 
 join -v 1 \
     --check-order \
