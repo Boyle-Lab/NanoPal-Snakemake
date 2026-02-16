@@ -205,7 +205,7 @@ rule find_revcomp_reads:
     shell:
         logged(
             "samtools view {input.bam}"
-            "    -q 10 -F 0x100 -F 0x200 -F 0x800 -F 0x400 -f 0x10"
+            "    -F 0x100 -F 0x200 -F 0x800 -F 0x400 -f 0x10"
             "  | awk '{{print $1}}'"
             "  > {output.revcomp_read_ids}"
         )
