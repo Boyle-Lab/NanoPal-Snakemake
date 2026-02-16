@@ -36,7 +36,7 @@ function retrieve_from_bam {
         --with-header \
         --expr '[qs] >= 9' \
     | samtools fastq \
-        -T MM,pi,sp,ns,ts,RG,qs,ts,ns,mx,ch,rn,st,du,fn,sm,sd,sv,dx,pi,sp,pt,bh,MN \
+        -T MM,ML,pi,sp,ns,ts,RG,qs,ts,ns,mx,ch,rn,st,du,fn,sm,sd,sv,dx,pi,sp,pt,bh,MN \
     >> "$output_fastq"
 }
 
