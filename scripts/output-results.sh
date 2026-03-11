@@ -38,7 +38,12 @@ multiple_support=$(awk    'BEGIN {n=0} $4 > 1 {n+=1} END {print n}' "$potential_
 # But we can at least parallelize the individual stat computations.
 
 # Get some basic read counts/stats from the BAM.
-total_reads=$(samtools view --threads "$threads" -c "$bam") # need to compute first to divide by in the next stats
+
+# We need to compute total reads first to divide by in the next stats.
+# Total reads should count all NON-SUPPLEMENTARY alignments, regardless of
+# whether they map and/or are of decent quality.
+total_reads=$(samtools view --threads "$threads" -c -F 0x800 "$bam")
+
 samtools view --threads 2 -c -F 0x4 "$bam" | awk -v n="$total_reads" '{print 100.0 * $1/n}'         > "$out_dir"/stat_percent_mapped_reads &
 samtools view --threads 2 -c -f 0x4 "$bam" | awk -v n="$total_reads" '{print 100.0 * $1/n}'         > "$out_dir"/stat_percent_unmapped_reads &
 samtools view --threads 2 -c -q 10  "$bam" | awk -v n="$total_reads" '{print 100.0 * (1 - ($1/n))}' > "$out_dir"/stat_percent_low_mapq &
