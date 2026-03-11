@@ -15,8 +15,8 @@ revcomp_read_ids="$1" # RC.all.list
 shift
 foldbacks="$1" # foldbacks.csv
 shift
-ligation_artifacts="$1" # ligation_artifacts.txt
-shift
+# ligation_artifacts="$1" # ligation_artifacts.txt
+# shift
 mei="$1" # LINE
 shift
 
@@ -109,15 +109,15 @@ join -v 1 \
     > "$out_summary".filtered.foldbacks
 
 # Filter out ligation artifacts
-cat "$ligation_artifacts" \
-    | sort \
-    > ligation_artifact_read_ids
+# cat "$ligation_artifacts" \
+#     | sort \
+#     > ligation_artifact_read_ids
 
-join -v 1 \
-    --check-order \
-    "$out_summary".filtered.foldbacks \
-    ligation_artifact_read_ids \
-    > "$out_summary".filtered.foldbacks.ligations
+# join -v 1 \
+#     --check-order \
+#     "$out_summary".filtered.foldbacks \
+#     ligation_artifact_read_ids \
+#     > "$out_summary".filtered.foldbacks.ligations
 
 # Filter out large hallucinations
 hallucination_threshold=50
@@ -130,11 +130,11 @@ awk -v threshold="$hallucination_threshold" -F, \
 
 join -v 1 \
     --check-order \
-    "$out_summary".filtered.foldbacks.ligations \
+    "$out_summary".filtered.foldbacks \
     hallucination_read_ids \
-    > "$out_summary".filtered.foldbacks.ligations.hallucinations
+    > "$out_summary".filtered.foldbacks.hallucinations
 
-cp "$out_summary".filtered.foldbacks.ligations.hallucinations "$out_summary"
+cp "$out_summary".filtered.foldbacks.hallucinations "$out_summary"
 
 # TODO Refactor the rest of this into separate chunks.
 

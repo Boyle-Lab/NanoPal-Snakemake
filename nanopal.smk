@@ -97,30 +97,30 @@ rule index_reference:
             " {input.reference}"
         )
 
-rule detect_ligation_artifacts:
-    log:
-        scratch("_logs/detect_ligation_artifacts/{id}.log"),
-    benchmark:
-        scratch("_benchmarks/detect_ligation_artifacts/{id}.tsv")
-    container:
-        containers("liger2liger")
-    input:
-        fastq=scratch("{id}/input/batch.fastq"),
-        index=scratch("reference/index.mmi"),
-    output:
-        result=scratch("{id}/detect_ligation_artifacts/ligation_artifacts.txt"),
-    params:
-        output_dir=scratch("{id}/detect_ligation_artifacts"),
-    threads: 24
-    resources:
-        mem="72GB",
-        runtime="3h",
-    shell:
-        logged(
-            "cd {params.output_dir}",
-            "liger2liger --ref {input.index} --fastq {input.fastq} --n_threads {threads}",
-            "cp {params.output_dir}/batch_VS_index/batch_VS_index.chimeric_reads.txt {output.result}"
-        )
+# rule detect_ligation_artifacts:
+#     log:
+#         scratch("_logs/detect_ligation_artifacts/{id}.log"),
+#     benchmark:
+#         scratch("_benchmarks/detect_ligation_artifacts/{id}.tsv")
+#     container:
+#         containers("liger2liger")
+#     input:
+#         fastq=scratch("{id}/input/batch.fastq"),
+#         index=scratch("reference/index.mmi"),
+#     output:
+#         result=scratch("{id}/detect_ligation_artifacts/ligation_artifacts.txt"),
+#     params:
+#         output_dir=scratch("{id}/detect_ligation_artifacts"),
+#     threads: 24
+#     resources:
+#         mem="72GB",
+#         runtime="3h",
+#     shell:
+#         logged(
+#             "cd {params.output_dir}",
+#             "liger2liger --ref {input.index} --fastq {input.fastq} --n_threads {threads}",
+#             "cp {params.output_dir}/batch_VS_index/batch_VS_index.chimeric_reads.txt {output.result}"
+#         )
 
 rule minimera:
     log:
@@ -497,7 +497,7 @@ rule intersect_again:
         in_summary=scratch("{id}/{mei}/intersect/summary.final.txt"),
         revcomp_read_ids=scratch("{id}/find_revcomp_reads/RC.all.list"),
         foldbacks=scratch("{id}/minimera/foldbacks.csv"),
-        ligation_artifacts=scratch("{id}/detect_ligation_artifacts/ligation_artifacts.txt"),
+        # ligation_artifacts=scratch("{id}/detect_ligation_artifacts/ligation_artifacts.txt"),
     output:
         out_dir=directory(scratch("{id}/{mei}/intersect_again/")),
         out_summary=scratch("{id}/{mei}/intersect_again/summary.final.2.txt"),
@@ -516,7 +516,7 @@ rule intersect_again:
             "  {input.in_summary}"
             "  {input.revcomp_read_ids}"
             "  {input.foldbacks}"
-            "  {input.ligation_artifacts}"
+            # "  {input.ligation_artifacts}"
             "  {wildcards.mei}"
             "  {output.out_dir}"
             "  {output.out_summary}"
@@ -658,13 +658,13 @@ rule _intersect:
             mei=config["mobile_elements"],
         ),
 
-rule _ligation_artifacts:
-    localrule: True
-    input:
-        expand(
-            scratch("{id}/detect_ligation_artifacts/ligation_artifacts.txt"),
-            id=IDS,
-        ),
+# rule _ligation_artifacts:
+#     localrule: True
+#     input:
+#         expand(
+#             scratch("{id}/detect_ligation_artifacts/ligation_artifacts.txt"),
+#             id=IDS,
+#         ),
 
 rule _minimera:
     localrule: True
@@ -677,7 +677,7 @@ rule _results:
     input:
         scratch("collect-results/results.csv"),
         rules._minimera.input,
-        rules._ligation_artifacts.input,
+        # rules._ligation_artifacts.input,
 
 rule _all:
     default_target: True
