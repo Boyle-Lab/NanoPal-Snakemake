@@ -14,11 +14,10 @@ nanopal-binaries.sif: nanopal-binaries.def
 samtools.sif: samtools.def
 	singularity build --fakeroot $@ $<
 
-minimera.sif: minimera.def minimera/minimera minimera/minimera.1
-	singularity build --fakeroot $@ $<
-
-delulu.sif: delulu.def delulu/delulu
-	singularity build --fakeroot $@ $<
+minimera.sif: Makefile
+	wget 'https://github.com/Boyle-Lab/minimera/releases/download/v0.4.0/minimera-v0.4.0.sif'
+	mv minimera-v0.4.0.sif minimera.sif
+	chmod a+x minimera.sif
 
 liger2liger.zip:
 	wget https://github.com/rlorigro/Liger2LiGer/archive/refs/heads/main.zip -O liger2liger.zip
