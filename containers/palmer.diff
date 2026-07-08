@@ -25,4 +25,43 @@ index ed3f46b..8af6b6b 100755
          }
          
          for(int w=0;w!=line_tsd;++w){
-
+diff --git a/scp/8_calling.cpp b/scp/8_calling.cpp
+index 6c3fd77..3b65ebd 100755
+--- a/scp/8_calling.cpp
++++ b/scp/8_calling.cpp
+@@ -1467,7 +1467,7 @@ int calling(string WD_dir, string t, int tsd_index){
+                                 file4<<seq5[n];
+                             }
+ //5bp
+-                            for(int n=BIN_buff;n!=info_line[read_seq][2].length()-1-BIN_buff;++n){
++                            for(int n=BIN_buff;n<info_line[read_seq][2].length()-1-BIN_buff;++n){
+                                 file4<<seq_line[n];
+                             }
+                             
+@@ -1482,7 +1482,7 @@ int calling(string WD_dir, string t, int tsd_index){
+                                 file4<<seq3[n];
+                             }
+ //5bp
+-                            for(int n=1+BIN_buff;n!=info_line[read_seq][2].length()-1-BIN_buff;++n){
++                            for(int n=1+BIN_buff;n<info_line[read_seq][2].length()-1-BIN_buff;++n){
+                                 file4<<seq_line[n];
+                             }
+                             
+@@ -1920,7 +1920,7 @@ int calling(string WD_dir, string t, int tsd_index){
+                                 file4<<seq5[n];
+                             }
+                             
+-                            for(int n=BIN_buff;n!=info_line[read_seq][2].length()-1-BIN_buff;++n){
++                            for(int n=BIN_buff;n<info_line[read_seq][2].length()-1-BIN_buff;++n){
+                                 file4<<seq_line[n];
+                             }
+                             
+@@ -1935,7 +1935,7 @@ int calling(string WD_dir, string t, int tsd_index){
+                                 file4<<seq3[n];
+                             }
+                             
+-                            for(int n=1+BIN_buff;n!=info_line[read_seq][2].length()-1-BIN_buff;++n){
++                            for(int n=1+BIN_buff;n<info_line[read_seq][2].length()-1-BIN_buff;++n){
+                                 file4<<seq_line[n];
+                             }
+                             
