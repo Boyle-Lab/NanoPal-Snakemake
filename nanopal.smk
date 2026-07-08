@@ -46,6 +46,7 @@ def dataset_input_files(wc):
         paths = [paths]
     return paths
 
+# TODO add more threads here for samtools view/fastq
 rule input:
     log:
         scratch("_logs/input/{id}.log"),
@@ -62,7 +63,7 @@ rule input:
     threads: 2
     resources:
         mem="4GB",
-        runtime="1h",
+        runtime="4h",
     shell:
         logged(
             "./{input.script} "
@@ -187,6 +188,8 @@ rule alignment:
             "samtools index {output.bam} -@ {params.samtools_threads}"
         )
 
+
+# TODO add more threads here for samtools view
 rule find_revcomp_reads:
     log:
         scratch("_logs/find_revcomp_reads/{id}.log"),
@@ -201,7 +204,7 @@ rule find_revcomp_reads:
     threads: 2
     resources:
         mem="2GB",
-        runtime="30m",
+        runtime="2h",
     shell:
         logged(
             "samtools view {input.bam}"
@@ -238,7 +241,7 @@ rule palmer:
     threads: 2  # TODO
     resources:
         mem="8GB",
-        runtime="4h",
+        runtime="8h",
     shell:
         # First run Palmer.  Then grab all the Palmer blast results from the
         # regional subsets in the working directories.  Finally, clean up the
@@ -457,8 +460,8 @@ rule intersect:
         out_summary=scratch("{id}/{mei}/intersect/summary.final.txt"),
     threads: 2 # TODO
     resources:
-        mem="27GB",
-        runtime="30m",
+        mem="48GB",
+        runtime="1h",
     shell:
         logged(
             "./{input.script}"
