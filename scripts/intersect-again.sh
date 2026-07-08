@@ -120,7 +120,7 @@ join -v 1 \
 #     > "$out_summary".filtered.foldbacks.ligations
 
 # Filter out large hallucinations
-hallucination_threshold=50
+hallucination_threshold=1000
 
 awk -v threshold="$hallucination_threshold" -F, \
     'NR > 1 && $7 >= threshold { print $1 }' \
