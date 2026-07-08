@@ -46,7 +46,7 @@ total_reads=$(samtools view --threads "$threads" -c -F 0x800 "$bam")
 
 samtools view --threads 2 -c -F 0x4 "$bam" | awk -v n="$total_reads" '{print 100.0 * $1/n}'         > "$out_dir"/stat_percent_mapped_reads &
 samtools view --threads 2 -c -f 0x4 "$bam" | awk -v n="$total_reads" '{print 100.0 * $1/n}'         > "$out_dir"/stat_percent_unmapped_reads &
-samtools view --threads 2 -c -q 10  "$bam" | awk -v n="$total_reads" '{print 100.0 * (1 - ($1/n))}' > "$out_dir"/stat_percent_low_mapq &
+samtools view --threads 2 -c -q 20  "$bam" | awk -v n="$total_reads" '{print 100.0 * (1 - ($1/n))}' > "$out_dir"/stat_percent_low_mapq &
 
 # Get some stats about the unmapped reads. seqkit stats output looks like:
 #
