@@ -98,31 +98,6 @@ rule index_reference:
             " {input.reference}"
         )
 
-# rule detect_ligation_artifacts:
-#     log:
-#         scratch("_logs/detect_ligation_artifacts/{id}.log"),
-#     benchmark:
-#         scratch("_benchmarks/detect_ligation_artifacts/{id}.tsv")
-#     container:
-#         containers("liger2liger")
-#     input:
-#         fastq=scratch("{id}/input/batch.fastq"),
-#         index=scratch("reference/index.mmi"),
-#     output:
-#         result=scratch("{id}/detect_ligation_artifacts/ligation_artifacts.txt"),
-#     params:
-#         output_dir=scratch("{id}/detect_ligation_artifacts"),
-#     threads: 24
-#     resources:
-#         mem="72GB",
-#         runtime="3h",
-#     shell:
-#         logged(
-#             "cd {params.output_dir}",
-#             "liger2liger --ref {input.index} --fastq {input.fastq} --n_threads {threads}",
-#             "cp {params.output_dir}/batch_VS_index/batch_VS_index.chimeric_reads.txt {output.result}"
-#         )
-
 rule minimera:
     log:
         scratch("_logs/minimera/{id}.log"),
