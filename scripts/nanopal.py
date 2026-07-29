@@ -6,16 +6,13 @@ import os
 import sys
 
 from Bio import SeqIO
-from Bio.Seq import Seq, reverse_complement, complement
-from Bio.SeqRecord import SeqRecord
+from Bio.Seq import reverse_complement, complement
 
 from ssw import AlignmentMgr
 
 from intervaltree import IntervalTree
 
 import pysam
-
-import numpy as np
 
 TE_CUT_SITES = {}
 TE_SEQS = {}
@@ -24,122 +21,6 @@ TE_ALIGNERS = {}
 CHROMOSOMES = {"chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9",
                "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17",
                "chr18", "chr19", "chr20", "chr21", "chr22", "chrX", "chrY"}
-
-
-def smith_waterman(seq1, seq2, print_alignment=False):
-    SW_NA = 0
-    SW_UP = 1
-    SW_LEFT = 2
-    SW_DIAG = 3
-
-    SW_MATCH = 1
-    SW_MISMATCH = -2
-    SW_GAP = -2
-
-    rows = len(seq2) + 1
-    cols = len(seq1) + 1
-
-    grid = np.zeros((rows, cols), dtype=np.int32)
-    prev = np.zeros((rows, cols), dtype=np.uint8)
-
-    best_score = 0
-    best_row, best_col = -1, -1
-
-    for row, ch2 in enumerate(seq2, start=1):
-        for col, ch1 in enumerate(seq1, start=1):
-            score_match = grid[row-1][col-1] + (SW_MATCH if ch1 == ch2 else SW_MISMATCH)
-            score_gap1 = grid[row][col-1] + SW_GAP
-            score_gap2 = grid[row-1][col] + SW_GAP
-
-            # I kid you not, this max() call was taking 30% of our processing time when
-            # I profiled it.
-            # best = max(score_match, score_gap1, score_gap2, 0)
-
-            if score_match <= 0 and score_gap1 <= 0 and score_gap2 <= 0:
-                best = 0
-            elif score_match >= score_gap1 and score_match >= score_gap2:
-                best = score_match
-                prev[row][col] = SW_DIAG
-            elif score_gap1 >= score_gap2:
-                best = score_gap1
-                prev[row][col] = SW_LEFT
-            else:
-                best = score_gap2
-                prev[row][col] = SW_UP
-
-            grid[row][col] = best
-
-            if best > best_score:
-                best_score = best
-                best_row = row
-                best_col = col
-
-    row, col = best_row, best_col
-    e2, e1 = row, col
-    s2, s1 = None, None
-    if print_alignment:
-        path = []
-
-    while grid[row][col] > 0:
-        s2, s1 = row, col
-
-        if print_alignment:
-            path.append((row, col))
-
-        if prev[row][col] == SW_UP:
-            row -= 1
-        elif prev[row][col] == SW_LEFT:
-            col -= 1
-        else:
-            row -= 1
-            col -= 1
-
-    if print_alignment:
-        if not path:
-            print("No alignment found.")
-        else:
-            print_smith_waterman(seq1, seq2, path[::-1], (s1-1, e1-1), (s2-1, e2-1))
-
-    if s2:
-        return best_score, (s1-1, e1-1), (s2-1, e2-1)
-    else:
-        return None
-
-
-def print_smith_waterman(seq1, seq2, path, coords1, coords2):
-    print(f'{seq1=}')
-    print(f'{seq2=}')
-    print()
-    print(f'seq1[{coords1}], seq2[{coords2}]')
-    print()
-    chars1 = []
-    charsM = []
-    chars2 = []
-    p1, p2 = -1, -1
-    for i2, i1 in path:
-        # print(((i1, i2), (p1, p2)))
-        if i1 == p1 or i2 == p2:
-            charsM.append(' ')
-        else:
-            charsM.append('|' if seq1[i1-1] == seq2[i2-1] else 'x')
-
-        if i1 > p1:
-            p1 = i1
-            chars1.append(seq1[i1-1])
-        else:
-            chars1.append('-')
-
-        if i2 > p2:
-            p2 = i2
-            chars2.append(seq2[i2-1])
-        else:
-            chars2.append('-')
-
-    print (
-        ''.join(chars1) + '\n' +
-        ''.join(charsM) + '\n' +
-        ''.join(chars2)
-    )
 
 
 def te_sequence(seq, cut_site, slop=100):
@@ -376,14 +257,25 @@ def is_representative_alignment(r):
             and r.mapping_quality >= 20
             and r.get_tag('qs') >= 9.0)
 
-def mean_sd(data):
+def median_sd(data):
     if not data:
         return 0, 0
 
+    data = sorted(data)
+
     n = len(data)
+
+    if n % 2 == 0:
+        a = data[n // 2 - 1]
+        b = data[n // 2]
+        median = (a + b) / 2
+    else:
+        median = data[n // 2]
+
     mean = sum(data) / n
     sd = math.sqrt(sum(math.pow(x-mean, 2) for x in data) / n)
-    return mean, sd
+
+    return median, sd
 
 def output_results(output_dir, clustering_dbs):
     if not os.path.exists(output_dir):
@@ -397,8 +289,8 @@ def output_results(output_dir, clustering_dbs):
             w_csv = csv.writer(f_csv)
             w_csv.writerow(['te_id', 'contig', 'start', 'end',
                             'total_support',
-                            'long_way_support', 'long_way_mean', 'long_way_sd',
-                            'short_way_support', 'short_way_mean', 'short_way_sd',
+                            'long_way_support', 'long_way_median', 'long_way_sd',
+                            'short_way_support', 'short_way_median', 'short_way_sd',
                             'long_way_read_ids', 'short_way_read_ids'])
             for contig, tree in clustering_dbs[te_id].items():
                 for i in tree:
@@ -421,11 +313,11 @@ def output_results(output_dir, clustering_dbs):
 
                     lway_read_ids = _ids(lway_signals)
                     sway_read_ids = _ids(sway_signals)
-                    lway_mean, lway_sd = mean_sd(_clips(lway_signals))
-                    sway_mean, sway_sd = mean_sd(_clips(sway_signals))
+                    lway_median, lway_sd = median_sd(_clips(lway_signals))
+                    sway_median, sway_sd = median_sd(_clips(sway_signals))
 
-                    lway_desc = f'long {lway_support} m {lway_mean:.1f} sd {lway_sd:.1f}'
-                    sway_desc = f'short {sway_support} m {sway_mean:.1f} sd {sway_sd:.1f}'
+                    lway_desc = f'long {lway_support} m {lway_median:.1f} sd {lway_sd:.1f}'
+                    sway_desc = f'short {sway_support} m {sway_median:.1f} sd {sway_sd:.1f}'
 
                     desc = f'{lway_desc} / {sway_desc} / {lway_read_ids} {sway_read_ids}'
 
@@ -440,8 +332,8 @@ def output_results(output_dir, clustering_dbs):
                         print(bed_line, file=f_multiple)
 
                     w_csv.writerow([te_id, contig, lo, hi, support,
-                                    lway_support, lway_mean, lway_sd,
-                                    sway_support, sway_mean, sway_sd,
+                                    lway_support, lway_median, lway_sd,
+                                    sway_support, sway_median, sway_sd,
                                     lway_read_ids, sway_read_ids])
 
 
