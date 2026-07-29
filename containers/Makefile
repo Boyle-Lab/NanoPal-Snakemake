@@ -11,6 +11,9 @@ palmer.sif: palmer.def palmer.diff
 nanopal-binaries.sif: nanopal-binaries.def
 	singularity build --fakeroot $@ $<
 
+nanopal.sif: nanopal.def
+	singularity build --fakeroot $@ $<
+
 samtools.sif: samtools.def
 	singularity build --fakeroot $@ $<
 
