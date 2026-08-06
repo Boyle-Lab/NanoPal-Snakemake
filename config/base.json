@@ -3,9 +3,10 @@
         "blast": "docker://staphb/blast:2.15.0",
         "liger2liger": "liger2liger.def",
         "minimap2": "minimap2.def",
+        "minimera": "minimera-v0.4.0.sif",
+        "nanopal": "nanopal.def",
         "nanopal-binaries": "nanopal-binaries.def",
         "palmer": "palmer.def",
-        "samtools": "samtools.def",
-        "minimera": "minimera-v0.4.0.sif"
+        "samtools": "samtools.def"
     }
 }
