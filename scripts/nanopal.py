@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import collections
 import csv
 import math
 import os
@@ -14,8 +15,15 @@ from intervaltree import IntervalTree
 
 import pysam
 
-TE_CUT_SITES = {}
-TE_SEQS = {}
+# Maximum amount of softclip to allow for signals inside a reference element before we
+# consider them to be non-reference insertions inside a reference element.
+REF_SOFTCLIP = 40
+
+# Maximum amount of softclip to allow for signals OUTSIDE a reference element before we
+# consider them to be non-reference insertions.  If a signal has LESS than this as the
+# median softclip we consider it an unannotated reference element.
+NO_SOFTCLIP = 10
+
 TE_ALIGNERS = {}
 
 CHROMOSOMES = {"chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9",
@@ -46,7 +54,7 @@ def te_sequence(seq, cut_site, slop=100):
 
     # Need to str() here to remove the Seq wrapper, because using Seq objects in
     # Smith-Waterman dominates the CPU time with __getitem__() calls.
-    return str(long), str(short)
+    return str(long).upper(), str(short).upper()
 
 class Aligner:
     def __init__(self, te_id, direction, consensus_seq):
@@ -76,21 +84,22 @@ class Aligner:
 
         return a.optimal_score, (a.reference_start, a.reference_end), (a.read_start, a.read_end)
 
-def make_te_aligners(consensus, cut_site):
-    r = next(SeqIO.parse(consensus, "fasta"))
-    id = r.id
 
-    seq_lway, seq_sway = te_sequence(r.seq, cut_site)
+CUT_SITES = {
+    'LINE': 5918,
+    'AluYa': 242,
+    'AluYb': 254,
+}
 
-    lway_aligner = Aligner(id, 'long',  seq_lway)
-    sway_aligner = Aligner(id, 'short', seq_sway)
+def make_te_aligners(te_id, consensus_path):
+    r = next(SeqIO.parse(consensus_path, "fasta"))
 
-    TE_ALIGNERS[id] = (lway_aligner, sway_aligner)
+    seq_lway, seq_sway = te_sequence(r.seq, CUT_SITES[te_id])
 
-def make_aligners():
-    make_te_aligners('l1.fa', 5918)
-    make_te_aligners('aluya5.fa', 242)
-    make_te_aligners('aluyb8.fa', 254)
+    lway_aligner = Aligner(te_id, 'long',  seq_lway)
+    sway_aligner = Aligner(te_id, 'short', seq_sway)
+
+    TE_ALIGNERS[te_id] = (lway_aligner, sway_aligner)
 
 def check_alignment_quality(read_id, alignment, score_threshold=15):
     # ref (te) query
@@ -102,8 +111,8 @@ def check_alignment_quality(read_id, alignment, score_threshold=15):
     # TODO figure out decent values for these
     ok = score >= score_threshold and consensus_len > 20 and query_len > 20
 
-    if not ok:
-        print(f'excluding {read_id} for alignment quality', file=sys.stderr)
+    # if not ok:
+    #     print(f'excluding {read_id} for alignment quality', file=sys.stderr)
 
     return ok
 
@@ -114,8 +123,8 @@ def check_alignment_read_location(read_id, alignment, query_len, is_5):
     # for e.g. adapters.
     ok = qs < 60
 
-    if not ok:
-        print(f'excluding {read_id} for read location', file=sys.stderr)
+    # if not ok:
+    #     print(f'excluding {read_id} for read location', file=sys.stderr)
 
     return ok
 
@@ -127,8 +136,8 @@ def check_alignment_te_location(read_id, alignment):
     # TODO choose threshold
     ok = rs < 20
 
-    if not ok:
-        print(f'excluding {read_id} for te location', file=sys.stderr)
+    # if not ok:
+    #     print(f'excluding {read_id} for te location', file=sys.stderr)
 
     return ok
 
@@ -186,7 +195,7 @@ def alignment(read_id, te_id, aligner, sequence, query_len, is_5):
     alignment = aligner.align(sequence, is_5, print_alignment=debug)
 
     if not alignment:
-        print(f"no {te_id} alignment for {read_id} {is_5}", file=sys.stderr)
+        # print(f"no {te_id} alignment for {read_id} {is_5}", file=sys.stderr)
         return
 
     if not check_alignment(read_id, alignment, query_len, is_5):
@@ -200,7 +209,7 @@ def check_read(read, te_id, end_length=140):
     l = end_length
 
     if read.query_length < l:
-        print(f"excluding {read_id} for min read length", file=sys.stderr)
+        # print(f"excluding {read_id} for min read length", file=sys.stderr)
         return []
 
     r_5 = read.query_sequence[:l]
@@ -230,9 +239,6 @@ def check_read(read, te_id, end_length=140):
     return signals
 
 def cluster_alignment(db, signal, slop=15):
-    if signal.contig not in db:
-        db[signal.contig] = IntervalTree()
-
     tree = db[signal.contig]
 
     lo = max(0, signal.pos - slop)
@@ -248,14 +254,18 @@ def cluster_alignment(db, signal, slop=15):
             tree.remove(i)
         tree[lo:hi] = merged
 
+def is_valid_read(r, excluded_reads):
+    # TODO make this smarter in the future
+    return (r.query_name not in excluded_reads
+            and r.get_tag('qs') >= 9.0)
+
 def is_representative_alignment(r):
     # TODO make this smarter in the future
     is_primary = not (r.is_supplementary or r.is_secondary)
-    return (r.is_mapped
+    return (and r.is_mapped
             and is_primary
             and r.reference_name in CHROMOSOMES
-            and r.mapping_quality >= 20
-            and r.get_tag('qs') >= 9.0)
+            and r.mapping_quality >= 20)
 
 def median_sd(data):
     if not data:
@@ -277,92 +287,146 @@ def median_sd(data):
 
     return median, sd
 
-def output_results(output_dir, clustering_dbs):
+def build_reference_db(reference_te_path):
+    db = collections.defaultdict(IntervalTree)
+    with open(reference_te_path) as f:
+        # Lines look like:
+        # chr1	100000000	100000637	L1M2	ref	-	6514	7153
+        for line in f:
+            contig, start, end, te_id, _, _, _, _ = line.split('\t')
+            if contig in CHROMOSOMES:
+                db[contig][int(start):int(end)] = te_id
+    return db
+
+def find_reference_elements(reference_db, contig, start, end):
+    return sorted(x.data for x in reference_db[contig][start:end])
+
+def output_results(te_id, output_dir, clustering_db, reference_db):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
+    count_ref, count_all, count_multi = 0, 0, 0
+
     output_dir = output_dir.rstrip('/')
-    for te_id in clustering_dbs:
-        with open(f'{output_dir}/nanopal-{te_id}-all.bed', 'w') as f_all, \
-             open(f'{output_dir}/nanopal-{te_id}-multiple.bed', 'w') as f_multiple, \
-             open(f'{output_dir}/nanopal-{te_id}.csv', 'w') as f_csv:
-            w_csv = csv.writer(f_csv)
-            w_csv.writerow(['te_id', 'contig', 'start', 'end',
-                            'total_support',
-                            'long_way_support', 'long_way_median', 'long_way_sd',
-                            'short_way_support', 'short_way_median', 'short_way_sd',
-                            'long_way_read_ids', 'short_way_read_ids'])
-            for contig, tree in clustering_dbs[te_id].items():
-                for i in tree:
-                    lo = i.begin
-                    hi = i.end
-                    signals = i.data
-                    support = len(signals)
+    with open(f'{output_dir}/nanopal-{te_id}-all.bed', 'w') as f_all, \
+         open(f'{output_dir}/nanopal-{te_id}-multiple.bed', 'w') as f_multiple, \
+         open(f'{output_dir}/nanopal-{te_id}-reference.bed', 'w') as f_ref, \
+         open(f'{output_dir}/nanopal-{te_id}.csv', 'w') as f_csv:
+        w_csv = csv.writer(f_csv)
+        w_csv.writerow(['te_id', 'contig', 'start', 'end', 'total_support',
+                        'is_reference', 'reference_elements',
+                        'long_way_support', 'long_way_median', 'long_way_sd',
+                        'short_way_support', 'short_way_median', 'short_way_sd',
+                        'long_way_read_ids', 'short_way_read_ids'])
+        for contig, tree in clustering_db.items():
+            for i in tree:
+                lo = i.begin
+                hi = i.end
+                signals = i.data
+                support = len(signals)
 
-                    lway_signals = [s for s in signals if s.is_lway]
-                    sway_signals = [s for s in signals if not s.is_lway]
+                refs = find_reference_elements(reference_db, contig, lo, hi)
 
-                    lway_support = len(lway_signals)
-                    sway_support = len(sway_signals)
+                lway_signals = [s for s in signals if s.is_lway]
+                sway_signals = [s for s in signals if not s.is_lway]
 
-                    def _ids(sigs):
-                        return ' '.join(signal.read_id for signal in sigs)
+                lway_support = len(lway_signals)
+                sway_support = len(sway_signals)
 
-                    def _clips(sigs):
-                        return [signal.clip_length for signal in sigs]
+                def _ids(sigs):
+                    return ' '.join(signal.read_id for signal in sigs)
 
-                    lway_read_ids = _ids(lway_signals)
-                    sway_read_ids = _ids(sway_signals)
-                    lway_median, lway_sd = median_sd(_clips(lway_signals))
-                    sway_median, sway_sd = median_sd(_clips(sway_signals))
+                def _clips(sigs):
+                    return [signal.clip_length for signal in sigs]
 
-                    lway_desc = f'long {lway_support} m {lway_median:.1f} sd {lway_sd:.1f}'
-                    sway_desc = f'short {sway_support} m {sway_median:.1f} sd {sway_sd:.1f}'
+                def _refs(refs):
+                    return ' '.join(refs)
 
-                    desc = f'{lway_desc} / {sway_desc} / {lway_read_ids} {sway_read_ids}'
+                lway_read_ids = _ids(lway_signals)
+                sway_read_ids = _ids(sway_signals)
+                lway_median, lway_sd = median_sd(_clips(lway_signals))
+                sway_median, sway_sd = median_sd(_clips(sway_signals))
 
-                    mid = int((lo+hi)/2)
-                    thick_start = mid-1
-                    thick_end = mid+1
+                is_reference = refs and (lway_median <= REF_SOFTCLIP) and (sway_median <= REF_SOFTCLIP)
+                no_soft_clip = lway_median <= NO_SOFTCLIP and sway_median <= NO_SOFTCLIP
 
-                    bed_line = f'{contig}\t{lo}\t{hi}\t{desc}\t{support}\t.\t{thick_start}\t{thick_end}'
+                lway_desc = f'long {lway_support} m {lway_median:.1f} sd {lway_sd:.1f}'
+                sway_desc = f'short {sway_support} m {sway_median:.1f} sd {sway_sd:.1f}'
 
+                desc = f'{lway_desc} / {sway_desc} / {lway_read_ids} {sway_read_ids}'
+
+                if is_reference:
+                    desc = f'{_refs(refs)} / ' + desc
+                elif no_soft_clip:
+                    desc = f'unannotated / ' + desc
+
+                mid = int((lo+hi)/2)
+                thick_start = mid-1
+                thick_end = mid+1
+
+                bed_line = f'{contig}\t{lo}\t{hi}\t{desc}\t{support}\t.\t{thick_start}\t{thick_end}'
+
+                if is_reference or no_soft_clip:
+                    print(bed_line, file=f_ref)
+                    count_ref += 1
+                else:
                     print(bed_line, file=f_all)
+                    count_all += 1
+
                     if support >= 2:
+                        count_multi += 1
                         print(bed_line, file=f_multiple)
 
-                    w_csv.writerow([te_id, contig, lo, hi, support,
-                                    lway_support, lway_median, lway_sd,
-                                    sway_support, sway_median, sway_sd,
-                                    lway_read_ids, sway_read_ids])
+                w_csv.writerow([te_id, contig, lo, hi, support,
+                                is_reference, _refs(refs),
+                                lway_support, lway_median, lway_sd,
+                                sway_support, sway_median, sway_sd,
+                                lway_read_ids, sway_read_ids])
+
+    with open(f'{output_dir}/summary.txt', 'w') as f:
+        print(f'{count_ref} reference events', file=f)
+        print(f'{count_all} non-reference events, {count_multi} with multiple read support', file=f)
+
+def parse_minimera(minimera_path):
+    excluded_reads = set()
+
+    with open(minimera_path) as f:
+        r = csv.reader(f)
+        _ = next(r) # header
+        # read-id,read-length,classification,monotony,foldback-point,mean-qscore,llqr,llqr-start,llqr-end,lq-total,processing-time-microsec
+
+        for row in r:
+            id = row[0]
+            classification = row[2]
+
+            if classification == "foldback":
+                excluded_reads.add(id)
+
+    return excluded_reads
 
 
-def run(te_id, alignment_path, output_dir):
-    # te_ids = ["LINE1", "AluYa5", "AluYb8"]
-    te_ids = [te_id]
-    make_aligners()
-    clustering_dbs = {te_id: {} for te_id in te_ids}
+def run(te_id, te_fasta_path, reference_te_path, alignment_path, minimera_path, output_dir):
+    make_te_aligners(te_id, te_fasta_path)
+    clustering_db = collections.defaultdict(IntervalTree)
+    reference_db = build_reference_db(reference_te_path)
+    excluded_reads = parse_minimera(minimera_path)
 
     i = 0
     with pysam.AlignmentFile(alignment_path, "rb") as bam:
         for r in bam.fetch(until_eof=True):
             i += 1
             if i % 10000 == 0:
-                print(i, flush=True)
+                print(f'{i: 14,}', flush=True)
 
             # if i == 50000:
             #     break
 
-            if is_representative_alignment(r):
-                for te_id in te_ids:
-                    for signal in check_read(r, te_id):
-                        cluster_alignment(clustering_dbs[te_id], signal)
+            if is_valid_read(r, excluded_reads) and is_representative_alignment(r):
+                for signal in check_read(r, te_id):
+                    cluster_alignment(clustering_db, signal)
     print()
 
-    output_results(output_dir, clustering_dbs)
+    output_results(te_id, output_dir, clustering_db, reference_db)
 
 if __name__ == '__main__':
-    te_id = sys.argv[1]
-    bam_path = sys.argv[2]
-    results_path = sys.argv[3]
-    run(te_id, bam_path, results_path)
+    run(*sys.argv[1:])
