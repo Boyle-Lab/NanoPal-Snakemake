@@ -145,7 +145,7 @@ rule alignment:
     threads: 24
     resources:
         mem="64GB",
-        runtime="4h",
+        runtime="12h",
     shell:
         logged(
             "rm -f {output.bam}",
@@ -484,7 +484,7 @@ rule intersect_again:
     threads: 2 # TODO
     resources:
         mem="12GB",
-        runtime="30m",
+        runtime="2h",
     shell:
         logged(
             "./{input.script}"
@@ -577,6 +577,39 @@ rule collect_results:
         )
 
 
+rule nanopal:
+    log:
+        scratch("_logs/nanopal/{id}_{mei}.log"),
+    benchmark:
+        scratch("_benchmarks/nanopal/{id}_{mei}.tsv")
+    container:
+        containers("nanopal")
+    input:
+        script="scripts/nanopal.py",
+        bam=scratch("{id}/alignment/alignment.bam"),
+        mei_fasta=mei_fasta,
+        ref_mei=ref_mei,
+        reads_fasta=scratch("{id}/input/batch.fasta"),
+    output:
+        nanopal_reads=scratch("{id}/{mei}/nanopal/summary.txt")
+    params:
+        mei="{mei}",
+        results=scratch("{id}/{mei}/nanopal/")
+    threads: 2
+    resources:
+        mem="12GB",
+        runtime="3h",
+    shell:
+        logged(
+            "./{input.script}"
+            "  {params.mei}"
+            "  {input.mei_fasta}"
+            "  {input.ref_mei}"
+            "  {input.bam}"
+            "  {params.results}"
+        )
+
+
 # PHONY -----------------------------------------------------------------------
 rule _input:
     localrule: True
@@ -636,26 +669,27 @@ rule _intersect:
             mei=config["mobile_elements"],
         ),
 
-# rule _ligation_artifacts:
-#     localrule: True
-#     input:
-#         expand(
-#             scratch("{id}/detect_ligation_artifacts/ligation_artifacts.txt"),
-#             id=IDS,
-#         ),
-
 rule _minimera:
     localrule: True
     input:
         expand(scratch("{id}/minimera/foldbacks.csv"), id=IDS),
-        # expand(scratch("{id}/minimera/foldbacks.bed"), id=IDS),
+
+# TODO this will eventually become the whole thing
+rule _nanopal:
+    localrule: True
+    input:
+        expand(
+            scratch("{id}/{mei}/nanopal/summary.txt"),
+            id=IDS,
+            mei=config["mobile_elements"],
+        ),
 
 rule _results:
     localrule: True
     input:
         scratch("collect-results/results.csv"),
         rules._minimera.input,
-        # rules._ligation_artifacts.input,
+        rules._nanopal.input,
 
 rule _all:
     default_target: True
